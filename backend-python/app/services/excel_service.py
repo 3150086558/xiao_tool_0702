@@ -167,108 +167,191 @@ def download_template() -> bytes:
 
 
 def import_excel(user_id: int, file_data: bytes) -> dict:
-    """导入 Excel 文件。自动识别表头行，并读取其下方所有非空数据行。"""
-    excel_file = io.BytesIO(file_data)
-    wb = load_workbook(excel_file, data_only=True)
-    ws = wb.active
+    """导入 Excel 或 CSV 文件。自动识别格式，自动定位表头行，并读取其下方所有非空数据行。"""
+    try:
+        # 尝试以 Excel 格式解析
+        excel_file = io.BytesIO(file_data)
+        wb = load_workbook(excel_file, data_only=True)
+        ws = wb.active
+        file_type = "xlsx"
+    except Exception:
+        # Excel 解析失败，尝试以 CSV 格式解析
+        try:
+            csv_content = file_data.decode("utf-8-sig").encode("utf-8")
+            csv_reader = csv.DictReader(io.StringIO(csv_content.decode("utf-8")))
+            csv_rows = list(csv_reader)
+            file_type = "csv"
+        except Exception:
+            raise ValueError("无法解析文件，仅支持 Excel (.xlsx) 和 CSV 格式")
 
-    # 自动定位表头行：包含"日期"和"项目"列
-    header_row = 1
-    headers = {}
-    for row in range(1, min(ws.max_row, 10) + 1):
-        row_headers = {}
-        for col in range(1, ws.max_column + 1):
-            val = str(ws.cell(row=row, column=col).value or "").strip()
-            if val:
-                row_headers[val] = col
-        if "日期" in row_headers and "项目" in row_headers:
-            header_row = row
-            headers = row_headers
-            break
+    if file_type == "xlsx":
+        # Excel 文件处理逻辑
+        # 自动定位表头行：包含"日期"和"项目"列
+        header_row = 1
+        headers = {}
+        for row in range(1, min(ws.max_row, 10) + 1):
+            row_headers = {}
+            for col in range(1, ws.max_column + 1):
+                val = str(ws.cell(row=row, column=col).value or "").strip()
+                if val:
+                    row_headers[val] = col
+            if "日期" in row_headers and "项目" in row_headers:
+                header_row = row
+                headers = row_headers
+                break
 
-    required = ["日期", "类型", "项目", "金额"]
-    for r in required:
-        if r not in headers:
-            raise ValueError(f"缺少必须列：{r}")
+        required = ["日期", "类型", "项目", "金额"]
+        for r in required:
+            if r not in headers:
+                raise ValueError(f"缺少必须列：{r}")
 
-    success_count = 0
-    errors = []
-    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    type_map = {"收入": "income", "支出": "expense"}
+        success_count = 0
+        errors = []
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        type_map = {"收入": "income", "支出": "expense"}
 
-    from app.database import exec_sql, get_db
+        from app.database import exec_sql, get_db
 
-    with get_db() as conn:
-        for row_num in range(header_row + 1, ws.max_row + 1):
-            try:
-                record_date = str(ws.cell(row=row_num, column=headers["日期"]).value or "").strip()
-                record_type = str(ws.cell(row=row_num, column=headers["类型"]).value or "").strip()
-                category = str(ws.cell(row=row_num, column=headers["项目"]).value or "").strip()
-                amount_val = ws.cell(row=row_num, column=headers["金额"]).value
+        with get_db() as conn:
+            for row_num in range(header_row + 1, ws.max_row + 1):
+                try:
+                    record_date = str(ws.cell(row=row_num, column=headers["日期"]).value or "").strip()
+                    record_type = str(ws.cell(row=row_num, column=headers["类型"]).value or "").strip()
+                    category = str(ws.cell(row=row_num, column=headers["项目"]).value or "").strip()
+                    amount_val = ws.cell(row=row_num, column=headers["金额"]).value
 
-                sub_category = ""
-                if headers.get("消费分类"):
-                    sub_category = str(ws.cell(row=row_num, column=headers["消费分类"]).value or "").strip()
-                note = ""
-                if headers.get("备注"):
-                    note = str(ws.cell(row=row_num, column=headers["备注"]).value or "").strip()
-                account = ""
-                if headers.get("账户"):
-                    account = str(ws.cell(row=row_num, column=headers["账户"]).value or "").strip()
+                    sub_category = ""
+                    if headers.get("消费分类"):
+                        sub_category = str(ws.cell(row=row_num, column=headers["消费分类"]).value or "").strip()
+                    note = ""
+                    if headers.get("备注"):
+                        note = str(ws.cell(row=row_num, column=headers["备注"]).value or "").strip()
+                    account = ""
+                    if headers.get("账户"):
+                        account = str(ws.cell(row=row_num, column=headers["账户"]).value or "").strip()
 
-                # 跳过空行或示例/标记行（无日期且无项目）
-                if not record_date and not category:
-                    continue
+                    # 跳过空行或示例/标记行（无日期且无项目）
+                    if not record_date and not category:
+                        continue
 
-                # 跳过示例占位行（如"* 必填"、"选填"等）
-                if record_date in ["* 必填", "选填"] or category in ["* 必填", "选填"]:
-                    continue
+                    # 跳过示例占位行（如"* 必填"、"选填"等）
+                    if record_date in ["* 必填", "选填"] or category in ["* 必填", "选填"]:
+                        continue
 
-                # 解析日期
-                parsed_date = None
-                if isinstance(record_date, datetime):
-                    parsed_date = record_date
-                else:
+                    # 解析日期
+                    parsed_date = None
+                    if isinstance(record_date, datetime):
+                        parsed_date = record_date
+                    else:
+                        for fmt in ("%Y-%m-%d", "%Y/%m/%d", "%Y年%m月%d日", "%Y-%m-%d %H:%M:%S"):
+                            try:
+                                parsed_date = datetime.strptime(str(record_date), fmt)
+                                break
+                            except ValueError:
+                                continue
+                    if not parsed_date:
+                        errors.append(f"第 {row_num} 行：日期格式无效")
+                        continue
+                    record_date = parsed_date.strftime("%Y-%m-%d")
+
+                    if record_type not in type_map:
+                        errors.append(f"第 {row_num} 行：类型只能是收入或支出")
+                        continue
+                    record_type = type_map[record_type]
+
+                    try:
+                        amount = round(float(amount_val or 0), 2)
+                    except (ValueError, TypeError):
+                        errors.append(f"第 {row_num} 行：金额格式无效")
+                        continue
+
+                    if amount < 0:
+                        amount = abs(amount)
+                        if record_type == "income":
+                            record_type = "expense"
+
+                    if not category:
+                        errors.append(f"第 {row_num} 行：项目不能为空")
+                        continue
+
+                    exec_sql(
+                        conn,
+                        """INSERT INTO records
+                           (user_id, record_date, type, category, sub_category, amount, account, note, created_at, updated_at)
+                           VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+                        (user_id, record_date, record_type, category, sub_category, amount, account, note, now, now),
+                    )
+                    success_count += 1
+                except Exception as e:
+                    errors.append(f"第 {row_num} 行：{str(e)}")
+
+        return {"success": success_count, "errors": errors}
+    else:
+        # CSV 文件处理逻辑
+        success_count = 0
+        errors = []
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        type_map = {"收入": "income", "支出": "expense"}
+
+        from app.database import exec_sql, get_db
+
+        with get_db() as conn:
+            for row_idx, row in enumerate(csv_rows, 2):  # 行号从 2 开始（1 是表头）
+                try:
+                    record_date = str(row.get("日期") or row.get("date") or "").strip()
+                    record_type = str(row.get("类型") or row.get("type") or "").strip()
+                    category = str(row.get("项目") or row.get("item") or row.get("category") or "").strip()
+                    amount_val = row.get("金额") or row.get("amount") or 0
+                    sub_category = str(row.get("消费分类") or row.get("sub_category") or "").strip()
+                    note = str(row.get("备注") or row.get("note") or "").strip()
+                    account = str(row.get("账户") or row.get("account") or "").strip()
+
+                    # 跳过空行
+                    if not record_date and not category:
+                        continue
+
+                    # 解析日期
+                    parsed_date = None
                     for fmt in ("%Y-%m-%d", "%Y/%m/%d", "%Y年%m月%d日", "%Y-%m-%d %H:%M:%S"):
                         try:
                             parsed_date = datetime.strptime(str(record_date), fmt)
                             break
                         except ValueError:
                             continue
-                if not parsed_date:
-                    errors.append(f"第 {row_num} 行：日期格式无效")
-                    continue
-                record_date = parsed_date.strftime("%Y-%m-%d")
+                    if not parsed_date:
+                        errors.append(f"第 {row_idx} 行：日期格式无效")
+                        continue
+                    record_date = parsed_date.strftime("%Y-%m-%d")
 
-                if record_type not in type_map:
-                    errors.append(f"第 {row_num} 行：类型只能是收入或支出")
-                    continue
-                record_type = type_map[record_type]
+                    if record_type not in type_map:
+                        errors.append(f"第 {row_idx} 行：类型只能是收入或支出")
+                        continue
+                    record_type = type_map[record_type]
 
-                try:
-                    amount = round(float(amount_val or 0), 2)
-                except (ValueError, TypeError):
-                    errors.append(f"第 {row_num} 行：金额格式无效")
-                    continue
+                    try:
+                        amount = round(float(amount_val or 0), 2)
+                    except (ValueError, TypeError):
+                        errors.append(f"第 {row_idx} 行：金额格式无效")
+                        continue
 
-                if amount < 0:
-                    amount = abs(amount)
-                    if record_type == "income":
-                        record_type = "expense"
+                    if amount < 0:
+                        amount = abs(amount)
+                        if record_type == "income":
+                            record_type = "expense"
 
-                if not category:
-                    errors.append(f"第 {row_num} 行：项目不能为空")
-                    continue
+                    if not category:
+                        errors.append(f"第 {row_idx} 行：项目不能为空")
+                        continue
 
-                exec_sql(
-                    conn,
-                    """INSERT INTO records
-                       (user_id, record_date, type, category, sub_category, amount, account, note, created_at, updated_at)
-                       VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
-                    (user_id, record_date, record_type, category, sub_category, amount, account, note, now, now),
-                )
-                success_count += 1
-            except Exception as e:
-                errors.append(f"第 {row_num} 行：{str(e)}")
+                    exec_sql(
+                        conn,
+                        """INSERT INTO records
+                           (user_id, record_date, type, category, sub_category, amount, account, note, created_at, updated_at)
+                           VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+                        (user_id, record_date, record_type, category, sub_category, amount, account, note, now, now),
+                    )
+                    success_count += 1
+                except Exception as e:
+                    errors.append(f"第 {row_idx} 行：{str(e)}")
 
-    return {"success": success_count, "errors": errors}
+        return {"success": success_count, "errors": errors}

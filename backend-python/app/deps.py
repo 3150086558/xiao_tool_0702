@@ -13,7 +13,7 @@ JWT_SECRET = os.getenv("JWT_SECRET", "xiao-sys-secret-key-2026-very-long-secret"
 JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
 
 # Java 主服务地址，用于查询数据权限
-JAVA_SERVICE_URL = os.getenv("JAVA_SERVICE_URL", "http://127.0.0.1:8080")
+JAVA_SERVICE_URL = os.getenv("JAVA_SERVICE_URL", "http://127.0.0.1:8081")
 # 是否启用完整数据权限（默认 self 模式，仅查看自己的数据）
 DATA_SCOPE_ENABLED = os.getenv("DATA_SCOPE_ENABLED", "false").strip().lower() == "true"
 

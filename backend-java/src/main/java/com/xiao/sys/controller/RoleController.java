@@ -29,6 +29,7 @@ public class RoleController {
     }
 
     @GetMapping
+    @GetMapping("/list")
     public Result<List<SysRole>> getRoleList() {
         return Result.success(sysRoleService.getRoleList());
     }
@@ -72,6 +73,7 @@ public class RoleController {
     }
 
     @GetMapping("/{id}/menus")
+    @GetMapping("/{id}/menu-ids")
     public Result<List<Integer>> getMenuIds(@PathVariable Integer id) {
         return Result.success(sysRoleService.getMenuIdsByRoleId(id));
     }

@@ -25,7 +25,7 @@ export const useUserStore = defineStore('user', () => {
     userInfo.value = {
       id: data.id,
       username: data.username,
-      nickname: data.nickname || data.username,
+      nickname: data.nickname || data.realName || data.username,
       avatar: data.avatar || ''
     }
     menus.value = data.menus || data.menuTree || []

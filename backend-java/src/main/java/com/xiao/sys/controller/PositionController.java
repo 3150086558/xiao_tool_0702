@@ -30,6 +30,7 @@ public class PositionController {
     }
 
     @GetMapping
+    @GetMapping("/list")
     public Result<List<PositionDTO>> getPositionList(@RequestParam(required = false) Integer orgId) {
         return Result.success(sysPositionService.getPositionList(orgId));
     }
@@ -86,5 +87,39 @@ public class PositionController {
     @GetMapping("/{id}/data-scope")
     public Result<DataScopeDTO> getDataScope(@PathVariable Integer id) {
         return Result.success(sysPositionService.getDataScope(id));
+    }
+
+    @GetMapping("/{id}/permissions")
+    public Result<java.util.Map<String, Object>> getPermissions(@PathVariable Integer id) {
+        java.util.Map<String, Object> result = new java.util.HashMap<>();
+        result.put("roleIds", sysPositionService.getRoleIdsByPositionId(id));
+        result.put("dataScope", sysPositionService.getDataScope(id));
+        return Result.success(result);
+    }
+
+    @PutMapping("/{id}/permissions")
+    public Result<Void> savePermissions(@PathVariable Integer id, @RequestBody java.util.Map<String, Object> body) {
+        // 保存角色权限
+        @SuppressWarnings("unchecked")
+        java.util.List<Integer> roleIds = (java.util.List<Integer>) body.get("roleIds");
+        if (roleIds != null) {
+            sysPositionService.assignRoles(id, roleIds);
+        }
+
+        // 保存数据权限 (前端传 dataScope 数字，后端转成 scopeType 字符串)
+        if (body.containsKey("dataScope")) {
+            Integer dataScopeNum = body.get("dataScope") instanceof Number
+                    ? ((Number) body.get("dataScope")).intValue()
+                    : null;
+            if (dataScopeNum != null) {
+                DataScopeDTO dataScopeDto = new DataScopeDTO();
+                dataScopeDto.setScopeType(DataScopeDTO.fromDataScopeNumber(dataScopeNum));
+                @SuppressWarnings("unchecked")
+                java.util.List<Integer> customOrgIds = (java.util.List<Integer>) body.get("customOrgIds");
+                dataScopeDto.setCustomOrgIds(customOrgIds);
+                sysPositionService.setDataScope(id, dataScopeDto);
+            }
+        }
+        return Result.success();
     }
 }

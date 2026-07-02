@@ -2,143 +2,140 @@
 
 ## 项目概述
 
-一个基于 **Java Spring Boot 3.2 + Python FastAPI + Vue 3 + PostgreSQL** 的企业级组织权限管理系统，同时集成了个人记账、待办事项和备忘录等个人工具功能。
+这是一个前后端分离的综合工具项目，分为两大部分：
 
-## 技术栈
+- `backend-java`：组织、用户、岗位、角色、菜单、JWT 登录、数据权限等系统管理能力
+- `backend-python`：记账、统计、待办、备忘录、数据库查询等个人工具能力
+- `frontend`：基于 Vue 3 + Element Plus 的统一前端界面
 
-| 层级 | 技术 | 端口 |
-|------|------|------|
-| 前端 | Vue 3 + Element Plus + Vite | 5173 |
-| Java后端 | Spring Boot 3.2 + Spring Security + MyBatis Plus | 8081 |
-| Python后端 | FastAPI + Uvicorn + Psycopg2 | 8000 |
-| 数据库 | PostgreSQL 16 | 5432 |
+当前仓库更适合按“正在开发中的集成项目”理解，而不是已经完全联调完成的成品。部分模块已经具备基础 CRUD 和页面能力，但仍存在若干接口契约不一致、假数据兜底和启动配置未收口的问题。
 
-## Java 后端功能（/api/sys/*）
+## 当前技术栈
 
-负责系统管理和认证鉴权核心功能：
+| 层 | 技术 | 当前开发端口 |
+|---|---|---|
+| 前端 | Vue 3 + Vite + Element Plus + Pinia + Vue Router | `5173` |
+| Java 后端 | Spring Boot 3 + Spring Security + MyBatis-Plus | `8081` |
+| Python 后端 | FastAPI + Uvicorn | `8000` |
+| 数据库 | PostgreSQL 16 | `5432` |
 
-| 模块 | API 前缀 | 说明 |
-|------|----------|------|
-| 认证模块 | `/api/sys/login`, `/api/sys/logout`, `/api/sys/userinfo` | JWT 登录/登出/用户信息 |
-| 组织管理 | `/api/sys/org/*` | 树形组织 CRUD |
-| 人员管理 | `/api/sys/user/*`, `/api/sys/user/page` | 用户管理、分页查询、职位分配、密码重置 |
-| 职位管理 | `/api/sys/position/*`, `/api/sys/position/page` | 职位 CRUD、分页查询、角色分配、数据权限配置 |
-| 角色管理 | `/api/sys/role/*`, `/api/sys/role/page` | 角色 CRUD、分页查询、菜单权限分配 |
-| 菜单管理 | `/api/sys/menu/*` | 菜单树 CRUD |
-| 数据权限 | `/api/sys/data-scope/*` | 获取可见用户/组织列表 |
+## 当前已实现模块
 
-**核心特性**：
-- ✅ RBAC 权限模型（用户→职位→角色→菜单）
-- ✅ 5种数据权限策略（本人/本部门/本部门及子部门/自定义/全部）
-- ✅ JWT 无状态认证
-- ✅ BCrypt 密码加密
-- ✅ 支持用户名/手机号两种方式登录
-- ✅ 人员列表显示创建时间字段
+### 1. 系统管理模块（Java）
 
-## Python 后端功能（/api/app/*）
+接口前缀：`/api/sys/*`
 
-负责业务功能模块：
+已看到的主要能力：
 
-| 模块 | API 前缀 | 说明 |
-|------|----------|------|
-| 记账管理 | `/api/app/accounting/*` | 收支记录 CRUD、分页查询、**删除全部** |
-| 统计报表 | `/api/app/stats/*` | 收支汇总、分类统计、时间趋势 |
-| 导入导出 | `/api/app/accounting/import`, `/api/app/accounting/export`, `/api/app/download-template` | Excel 导入导出、模板下载、进度条显示 |
-| 待办事项 | `/api/app/todo/*` | 待办 CRUD、完成状态切换、优先级设置、到期提醒 |
-| 备忘录 | `/api/app/note/*` | 备忘录 CRUD、标签管理、富文本支持 |
-| 数据库查询 | `/api/app/db-query`, `/api/app/db-connections/*` | 外部数据库查询工具 |
+- 登录、退出、当前用户信息、修改密码
+- 组织树管理
+- 用户管理、重置密码、启停状态
+- 岗位管理
+- 角色管理、角色菜单分配
+- 菜单管理
+- 数据权限可见用户、可见组织查询
 
-**核心特性**：
-- ✅ 验证 Java 签发的 JWT 令牌
-- ✅ 支持数据权限过滤
-- ✅ Excel 模板下载和导入
-- ✅ **导入导出进度条弹窗显示**（含成功/失败条数提示）
-- ✅ 待办完成状态字段自动映射（前端 done ↔ 后端 completed）
-- ✅ 记账：支持按项目/分类/日期范围筛选
+### 2. 业务工具模块（Python）
 
-## 项目结构
+接口前缀：`/api/app/*`
 
-```
+已看到的主要能力：
+
+- 记账记录分页、增删改、导入导出、模板下载
+- 统计汇总、分类统计、趋势统计
+- 待办事项管理
+- 备忘录管理
+- 外部数据库连接配置与只读 SQL 查询
+
+### 3. 前端页面
+
+已存在页面包括：
+
+- 登录页、首页、个人中心
+- 组织、用户、岗位、角色、菜单管理
+- 记账管理、统计报表
+- 待办事项、备忘录、数据库查询
+
+## 目录结构
+
+```text
 my_project/
-├── backend-java/          # Java Spring Boot 后端
-│   ├── src/main/java/com/xiao/sys/
-│   │   ├── controller/   # 控制器层
-│   │   ├── service/      # 业务逻辑层
-│   │   ├── mapper/       # MyBatis Plus Mapper
-│   │   ├── entity/       # 数据库实体
-│   │   └── dto/          # 数据传输对象
-│   ├── src/main/resources/
-│   ├── mvnw.cmd
-│   ├── pom.xml
-│   └── target/backend-java-1.0.0.jar
-├── backend-python/        # Python FastAPI 后端
-│   ├── app/
-│   │   ├── routers/      # 路由模块
-│   │   ├── services/     # 业务逻辑
-│   │   └── database.py   # 数据库连接
-│   └── requirements.txt
-├── frontend/              # Vue 3 前端
-│   ├── src/
-│   │   ├── views/        # 页面组件
-│   │   ├── api/          # API 封装
-│   │   ├── store/        # Pinia 状态管理
-│   │   └── router/       # 路由配置
-│   ├── vite.config.js
-│   └── package.json
-├── sql/                   # 数据库脚本
-│   ├── init_postgres.sql
-│   ├── init_mysql.sql
-│   └── init_sqlite.sql
-├── test_data/             # 测试脚本目录
-│   ├── test_python_api.py
-│   ├── test_java_api.py
-│   └── test_all_fixed.py
-├── nginx/                 # Nginx 配置
-├── docker-compose.yml     # Docker 一键部署
-└── IMPLEMENTATION_PLAN.md # 实现方案文档
+├─ backend-java/        Java 系统管理后端
+├─ backend-python/      Python 业务工具后端
+├─ frontend/            Vue 前端
+├─ sql/                 数据库初始化脚本
+├─ nginx/               Nginx 配置
+├─ test_data/           临时验证脚本
+├─ docker-compose.yml   Docker 编排草稿
+├─ IMPLEMENTATION_PLAN.md
+└─ FIXES_SUMMARY.md
 ```
 
-## 快速开始
+## 推荐启动方式
 
-### 环境要求
-- JDK 17+
-- Python 3.10+
-- Node.js 20+
-- PostgreSQL 16
+当前建议优先使用“本地分别启动”的方式，不建议直接依赖 `docker-compose.yml`，因为仓库内目前没有对应的 `Dockerfile`，且编排端口与实际应用端口也未完全对齐。
 
-### 1. 创建数据库
+### 1. 准备数据库
+
+创建数据库：
 
 ```sql
 CREATE DATABASE org_sys WITH ENCODING 'UTF8';
 ```
 
-### 2. 初始化数据库
+执行初始化脚本：
 
 ```bash
 psql -d org_sys -U postgres -f sql/init_postgres.sql
 ```
 
-### 3. 启动 Java 后端
+### 2. 启动 Java 后端
+
+配置文件位置：`backend-java/src/main/resources/application.yml`
+
+当前默认配置：
+
+- 端口：`8081`
+- 数据库：`jdbc:postgresql://127.0.0.1:5432/org_sys`
+- 用户名：`postgres`
+- 密码：`123456`
+
+启动命令：
 
 ```bash
 cd backend-java
-
-# 方式一：使用 Maven Wrapper 运行
 mvnw.cmd spring-boot:run
-
-# 方式二：运行已编译的 jar（推荐）
-java -jar target/backend-java-1.0.0.jar
 ```
 
-### 4. 启动 Python 后端
+说明：如果本机没有 Maven 依赖缓存，首次启动需要联网下载依赖。
+
+### 3. 启动 Python 后端
+
+安装依赖：
 
 ```bash
 cd backend-python
 pip install -r requirements.txt
-uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
-### 5. 启动前端
+启动命令：
+
+```bash
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+关键环境变量：
+
+- `DB_HOST=127.0.0.1`
+- `DB_PORT=5432`
+- `DB_NAME=org_sys`
+- `DB_USER=postgres`
+- `DB_PASSWORD=123456`
+- `JWT_SECRET=xiao-sys-secret-key-2026-very-long-secret`
+- `JAVA_SERVICE_URL=http://127.0.0.1:8081`
+- `DATA_SCOPE_ENABLED=false`
+
+### 4. 启动前端
 
 ```bash
 cd frontend
@@ -146,180 +143,100 @@ npm install
 npm run dev
 ```
 
-### 6. 访问系统
+当前 Vite 代理：
 
-浏览器打开 **http://localhost:5173**
+- `/api/sys` -> `http://127.0.0.1:8081`
+- `/api/app` -> `http://127.0.0.1:8000`
 
-**默认账号**：`admin` / `admin123`
+访问地址：
 
-## API 访问
+- 前端：<http://localhost:5173>
+- Python Swagger：<http://localhost:8000/docs>
 
-| 服务 | 地址 | 说明 |
-|------|------|------|
-| 前端 | http://localhost:5173 | Vue SPA（浏览器访问） |
-| Java API | http://127.0.0.1:8081/api/sys/ | 系统管理接口 |
-| Python API | http://127.0.0.1:8000/api/app/ | 业务功能接口 |
-| Python Docs | http://127.0.0.1:8000/docs | FastAPI Swagger 文档 |
+## 默认账号说明
 
-## 前端代理配置
+仓库内存在两个相互冲突的默认账号线索：
 
-前端通过 Vite 代理访问后端（`vite.config.js`）：
-- `/api/sys/*` → http://127.0.0.1:8081
-- `/api/app/*` → http://127.0.0.1:8000
+- 登录页提示：`admin / admin123`
+- 初始化 SQL 注释提示：`admin / Admin@123`
 
-## 权限模型
+因此请不要直接信任前端提示文案，建议以实际数据库初始化结果为准，或初始化后立即手工验证一次登录。
 
-```
-组织(org) ──树形── 组织
-    │
-    ├── 职位(position)
-    │      │
-    │      ├── 角色绑定(role_position)
-    │      │      │
-    │      │      └── 角色(role) ── 菜单权限(role_menu)
-    │      │                              │
-    │      │                              └── 菜单/按钮(menu)
-    │      │
-    │      └── 数据权限规则(position_data_scope)
-    │
-    └── 人员(user)
-           │
-           └── user_position (一人可多职位)
-```
+## 当前已确认的现状与限制
 
-## 数据权限策略
+以下内容是基于当前源码检查得到的结论，开发和联调时请优先关注：
 
-| 策略 | 说明 |
-|------|------|
-| self | 仅本人 |
-| dept | 本部门 |
-| dept_and_sub | 本部门及子部门 |
-| custom | 自定义部门 |
-| all | 全部数据 |
+### 1. Docker 编排未收口
 
-## 开发说明
+- `docker-compose.yml` 中引用了 `backend-java/Dockerfile`、`backend-python/Dockerfile`、`frontend/Dockerfile`
+- 当前仓库内未看到这些 `Dockerfile`
+- `docker-compose.yml` 中 Java 暴露的是 `8080:8080`，但 Java 实际配置端口是 `8081`
 
-### JWT 密钥
+结论：`docker-compose.yml` 目前不能视为可直接使用的正式部署方案。
 
-Java 和 Python 共享同一密钥，配置在：
-- Java: `application.yml` → `jwt.secret`
-- Python: 环境变量 `JWT_SECRET` 或代码中配置
+### 2. 多个前端页面带有假数据兜底
 
-### 字段映射说明
+当接口失败时，部分页面会自动回退到本地 `mockData()` / `mockTree()`，包括但不限于：
 
-**待办事项**（前后端字段统一转换）：
-- `done` (前端) ↔ `completed` (后端)
-- `dueDate` (前端) ↔ `due_date` (后端)
-- `createTime` / `updateTime` 自动填充
+- 用户管理
+- 组织管理
+- 角色管理
+- 岗位管理
+- 待办事项
+- 备忘录
 
-### 数据库表新增列
+结论：页面“看起来有数据”不代表后端真的可用，联调和验收时必须看网络请求结果。
 
-```sql
--- 备忘录表新增 tags 列
-ALTER TABLE notes ADD COLUMN IF NOT EXISTS tags TEXT;
+### 3. 部分接口契约存在不一致
 
--- 待办表新增 remark 列
-ALTER TABLE todos ADD COLUMN IF NOT EXISTS remark TEXT;
-```
+当前源码中已经确认存在以下不一致：
 
-## 功能模块说明
+- 前端岗位列表调用 `/api/sys/position/list`，后端实际提供的是 `GET /api/sys/position`
+- 前端角色菜单回显调用 `/api/sys/role/{id}/menu-ids`，后端实际提供的是 `GET /api/sys/role/{id}/menus`
+- 前端岗位权限分配调用 `/api/sys/position/{id}/permissions`，后端目前没有这组聚合接口
+- 前端岗位数据权限使用数字值，后端 `DataScopeDTO` 使用字符串 `scopeType`
+- 数据库查询页前端使用 `postgresql`，后端连接器识别 `postgres`
 
-### 1. 记账管理
-- ✅ 收支记录增删改查
-- ✅ Excel 导入（带进度弹窗，显示成功/失败条数）
-- ✅ Excel 导出（带进度弹窗）
-- ✅ 导入模板下载
-- ✅ 按项目、分类、日期范围筛选
-- ✅ **删除全部记录**（带确认对话框）
-- ✅ 合计统计（收入/支出）
+结论：当前项目最需要优先做的是接口契约收口，而不是继续堆页面。
 
-### 2. 待办事项
-- ✅ 待办增删改查
-- ✅ 完成状态一键切换
-- ✅ 优先级设置（高/中/低）
-- ✅ 到期日期设置
-- ✅ 备注/详情字段
+### 4. 业务功能还有未闭环点
 
-### 3. 备忘录
-- ✅ 备忘录增删改查
-- ✅ 标签管理
-- ✅ 创建/更新时间显示
+已确认的典型问题：
 
-### 4. 组织管理
-- ✅ 树形组织架构
-- ✅ 组织增删改查
-- ✅ 支持多级子组织
+- 待办编辑时 `remark` 字段无法持久化
+- 数据库查询页的 PostgreSQL / SQLite 表单与后端要求不一致
+- SQL 执行失败时前端没有把错误原因展示给用户
+- 记账导入界面允许选择 `.csv`，但后端导入实现是 Excel 读取逻辑
+- 统计页的“近期明细”仍是静态示例数据，不是实时接口数据
+- 首页统计卡片是写死的展示数据，不是后端实时统计
 
-### 5. 人员管理
-- ✅ 用户增删改查
-- ✅ 分页查询
-- ✅ 职位分配（支持多职位）
-- ✅ 密码重置
-- ✅ 状态启用/禁用
-- ✅ **创建时间字段**显示
+## 建议的后续开发优先级
 
-### 6. 职位管理
-- ✅ 职位增删改查
-- ✅ **分页查询**
-- ✅ 角色分配
-- ✅ 数据权限配置
+建议开发顺序如下：
 
-### 7. 角色管理
-- ✅ 角色增删改查
-- ✅ **分页查询**
-- ✅ 菜单权限分配
+1. 先统一前后端接口路径、参数名、枚举值、返回结构
+2. 去掉生产页面里的假数据兜底，改成明确错误提示
+3. 修复岗位权限、角色菜单、岗位列表等主流程阻塞问题
+4. 补齐待办、数据库查询、统计页等业务模块的真实联调
+5. 最后再整理 Docker、部署和环境变量配置
 
-### 8. 菜单管理
-- ✅ 菜单树增删改查
-- ✅ 菜单类型（目录/菜单/按钮）
-- ✅ 显示排序
+## 当前验证情况
 
-### 9. 数据库查询工具
-- ✅ 外部数据库连接管理
-- ✅ SQL 查询执行
-- ✅ 查询结果展示
+截至本次 README 更新时，已完成的验证如下：
 
-## Docker 部署
+- 前端 `npm run build` 可以成功打包
+- 前端构建后存在较大的 bundle 告警，但不阻塞运行
+- Java 自动化测试未在当前环境完整跑通，原因是 Maven Wrapper 依赖下载受网络环境影响
+- Python 侧进行了源码检查，但当前本地虚拟环境解释器引用存在异常，未完成完整运行验证
 
-```bash
-# 一键启动所有服务
-docker-compose up -d
-```
+## 适用结论
 
-## 常见问题
+如果你是继续开发这个项目，建议把它当成“已完成基础框架和大部分页面，但仍需一次系统联调和接口收口”的版本。
 
-### Q1: Java 后端启动后访问报错 404
-请确保端口是 **8081**（不是 8080），正确的 API 地址是：
-`http://127.0.0.1:8081/api/sys/user/page`
+如果你是准备交付或部署这个项目，当前状态还不适合作为最终交付版本，至少需要先完成：
 
-### Q2: 删除全部记账时 422 报错
-已修复路由顺序问题，`/accounting/all` 现在会优先匹配。
-
-### Q3: 新增待办/备忘录后列表不刷新
-已修复字段映射问题，后端统一处理字段转换。
-
-### Q4: 导入时没有进度条
-已新增进度条弹窗，大文件上传时会显示上传百分比。
-
-## 更新日志
-
-### v1.1.0 (最新)
-- ✅ 修复记账管理删除全部 422 报错
-- ✅ 修复待办字段映射（done/completed）
-- ✅ 修复备忘录字段映射（createTime/updateTime）
-- ✅ 新增导入导出进度条弹窗
-- ✅ 新增用户/职位/角色分页 API
-- ✅ 人员列表新增创建时间字段
-- ✅ 支持手机号登录
-- ✅ 数据库表新增 tags/remark 列
-
-### v1.0.0
-- ✅ 基础组织权限管理系统
-- ✅ 记账管理模块
-- ✅ 待办事项模块
-- ✅ 备忘录模块
-- ✅ 数据库查询工具模块
-
-## License
-
-MIT License
+- 接口契约统一
+- 假数据清理
+- 主流程联调
+- 启动与部署脚本收口
+- 默认账号与环境变量整理

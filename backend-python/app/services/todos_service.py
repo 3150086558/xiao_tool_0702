@@ -71,7 +71,8 @@ def update_todo(user_id: int, todo_id: int, data: dict) -> dict:
     with get_db() as conn:
         cur = exec_sql(
             conn,
-            """UPDATE todos SET title=%s, completed=%s, priority=%s, due_date=%s, remark=%s, updated_at=%s
+            """UPDATE todos
+               SET title=%s, completed=%s, priority=%s, due_date=%s, remark=%s, updated_at=%s
                WHERE id=%s AND user_id=%s RETURNING *""",
             (title, completed, priority, due_date, remark, now, todo_id, user_id),
         )

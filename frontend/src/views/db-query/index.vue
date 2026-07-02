@@ -103,27 +103,30 @@
           <el-input v-model="connForm.name" placeholder="如：开发库" />
         </el-form-item>
         <el-form-item label="数据库类型" prop="type">
-          <el-select v-model="connForm.type" placeholder="请选择" style="width: 100%">
+          <el-select v-model="connForm.type" placeholder="请选择" style="width: 100%" @change="handleDbTypeChange">
             <el-option label="MySQL" value="mysql" />
             <el-option label="PostgreSQL" value="postgresql" />
             <el-option label="SQLite" value="sqlite" />
-            <el-option label="SQL Server" value="sqlserver" />
+            <el-option label="SQL Server" value="sqlserver" disabled />
           </el-select>
         </el-form-item>
-        <el-form-item label="主机地址" prop="host">
+        <el-form-item v-if="connForm.type !== 'sqlite'" label="主机地址" prop="host">
           <el-input v-model="connForm.host" placeholder="127.0.0.1" />
         </el-form-item>
-        <el-form-item label="端口" prop="port">
+        <el-form-item v-if="connForm.type !== 'sqlite'" label="端口" prop="port">
           <el-input-number v-model="connForm.port" :min="1" :max="65535" style="width: 100%" />
         </el-form-item>
-        <el-form-item label="数据库名" prop="database">
+        <el-form-item v-if="connForm.type !== 'sqlite'" label="数据库名" prop="database">
           <el-input v-model="connForm.database" placeholder="请输入数据库名" />
         </el-form-item>
-        <el-form-item label="用户名" prop="username">
+        <el-form-item v-if="connForm.type !== 'sqlite'" label="用户名" prop="username">
           <el-input v-model="connForm.username" placeholder="请输入用户名" />
         </el-form-item>
-        <el-form-item label="密码" prop="password">
+        <el-form-item v-if="connForm.type !== 'sqlite'" label="密码" prop="password">
           <el-input v-model="connForm.password" type="password" show-password placeholder="请输入密码" />
+        </el-form-item>
+        <el-form-item v-if="connForm.type === 'sqlite'" label="SQLite 文件路径" prop="sqlite_path">
+          <el-input v-model="connForm.sqlite_path" placeholder="如：/data/test.db" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -171,13 +174,25 @@ const connSubmitLoading = ref(false)
 const connFormRef = ref()
 const connForm = reactive({
   id: null, name: '', type: 'mysql', host: '127.0.0.1',
-  port: 3306, database: '', username: '', password: ''
+  port: 3306, database: '', username: '', password: '', sqlite_path: ''
 })
 const connRules = {
   name: [{ required: true, message: '请输入连接名称', trigger: 'blur' }],
-  type: [{ required: true, message: '请选择数据库类型', trigger: 'change' }],
-  host: [{ required: true, message: '请输入主机地址', trigger: 'blur' }],
-  database: [{ required: true, message: '请输入数据库名', trigger: 'blur' }]
+  type: [{ required: true, message: '请选择数据库类型', trigger: 'change' }]
+}
+
+function handleDbTypeChange() {
+  if (connForm.type === 'sqlite') {
+    connForm.host = ''
+    connForm.port = 0
+    connForm.database = ''
+    connForm.username = ''
+    connForm.password = ''
+  } else if (connForm.type === 'mysql') {
+    connForm.port = 3306
+  } else if (connForm.type === 'postgresql') {
+    connForm.port = 5432
+  }
 }
 
 function handleAddConn() {
@@ -269,6 +284,10 @@ async function execSql() {
   } catch (e) {
     execTime.value = Date.now() - start
     executed.value = true
+    resultColumns.value = []
+    resultRows.value = []
+    const errMsg = e.response?.data?.detail || e.message || '执行失败'
+    ElMessage.error(errMsg)
   } finally {
     execLoading.value = false
   }

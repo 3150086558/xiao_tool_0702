@@ -148,6 +148,9 @@ def delete_db_connection(conn_id: int, user: CurrentUser = Depends(get_current_u
 def _connect_external_db(config: Dict[str, Any]):
     """连接外部数据库（支持 sqlite/postgres/mysql）。"""
     db_type = (config.get("db_type") or "postgres").lower()
+    # 兼容前端 "postgresql" 与后端 "postgres" 的差异
+    if db_type == "postgresql":
+        db_type = "postgres"
 
     if db_type == "sqlite":
         import sqlite3

@@ -41,6 +41,7 @@ class TodoUpdate(BaseModel):
     completed: int = Field(0, description="是否完成：0/1")
     priority: str = Field("normal", description="优先级：low/normal/high")
     due_date: Optional[str] = Field(None, description="截止日期")
+    remark: str = Field("", description="描述")
 
 
 # ==================== 备忘录 ====================
