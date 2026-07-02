@@ -12,7 +12,7 @@ router = APIRouter(prefix="/api/app", tags=["待办事项"])
 @router.get("/todo/page")
 def todo_page(
     page: int = Query(1, ge=1),
-    size: int = Query(10, ge=1, le=10000),
+    size: int = Query(10, ge=1, le=100),
     status: str = Query("", description="状态：pending/completed"),
     priority: str = Query("", description="优先级：low/normal/high"),
     user: CurrentUser = Depends(get_current_user),
@@ -69,16 +69,17 @@ def delete_todo(todo_id: int, user: CurrentUser = Depends(get_current_user)):
 
 @router.put("/todo/{todo_id}/done")
 def toggle_todo_done(todo_id: int, payload: dict, user: CurrentUser = Depends(get_current_user)):
+    existing = todos_service.get_todo(user.user_id, todo_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="待办不存在")
     completed = int(payload.get("completed", payload.get("done", 0)))
     try:
         row = todos_service.update_todo(user.user_id, todo_id, {
-            "title": "temp",
+            "title": existing["title"],
             "completed": completed,
-            "priority": "normal",
-            "due_date": None,
+            "priority": existing.get("priority", "normal"),
+            "due_date": existing.get("due_date"),
         })
     except ValueError:
-        row = None
-    if not row:
-        raise HTTPException(status_code=404, detail="待办不存在")
+        raise HTTPException(status_code=400, detail="更新失败")
     return {"code": 200, "data": row}

@@ -26,7 +26,7 @@ def _summary(filters: dict, visible_user_ids: List[int]) -> dict:
 
         cur = exec_sql(
             conn,
-            f"""SELECT type, category, COALESCE(SUM(amount), 0) AS amount
+            f"""SELECT type, category, COALESCE(SUM(amount), 0) AS amount, COUNT(*) AS count
                 FROM records WHERE {where}
                 GROUP BY type, category ORDER BY amount DESC""",
             params,

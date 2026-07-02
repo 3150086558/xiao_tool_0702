@@ -67,6 +67,7 @@
           </div>
         </el-card>
       </el-col>
+      <!-- 近期明细 -->
       <el-col :span="12">
         <el-card shadow="never">
           <template #header><span>近期明细</span></template>
@@ -98,18 +99,23 @@ async function loadSummary() {
   try {
     const res = await getStatsSummary()
     const d = res.data || {}
+    const income = d.income || 0
+    const expense = d.expense || 0
+    const balance = d.balance || (income - expense)
+    const categories = d.categories || []
+    const totalCount = categories.reduce((s, c) => s + (c.count || 0), 0)
     summaryCards.value = [
-      { title: '本月收入', value: '¥ ' + formatMoney(d.income || 12000), sub: '较上月 +8%', icon: 'Top', color: '#67c23a' },
-      { title: '本月支出', value: '¥ ' + formatMoney(d.expense || 5680.5), sub: '较上月 -3%', icon: 'Bottom', color: '#f56c6c' },
-      { title: '本月结余', value: '¥ ' + formatMoney(d.balance || 6319.5), sub: '结余率 52%', icon: 'Wallet', color: '#409eff' },
-      { title: '记账笔数', value: d.count || 48, sub: '日均 1.6 笔', icon: 'Document', color: '#e6a23c' }
+      { title: '本月收入', value: '¥ ' + formatMoney(income), sub: '', icon: 'Top', color: '#67c23a' },
+      { title: '本月支出', value: '¥ ' + formatMoney(expense), sub: '', icon: 'Bottom', color: '#f56c6c' },
+      { title: '本月结余', value: '¥ ' + formatMoney(balance), sub: '', icon: 'Wallet', color: '#409eff' },
+      { title: '记账笔数', value: totalCount || '0', sub: '', icon: 'Document', color: '#e6a23c' }
     ]
   } catch (e) {
     summaryCards.value = [
-      { title: '本月收入', value: '¥ 12000.00', sub: '较上月 +8%', icon: 'Top', color: '#67c23a' },
-      { title: '本月支出', value: '¥ 5680.50', sub: '较上月 -3%', icon: 'Bottom', color: '#f56c6c' },
-      { title: '本月结余', value: '¥ 6319.50', sub: '结余率 52%', icon: 'Wallet', color: '#409eff' },
-      { title: '记账笔数', value: '48', sub: '日均 1.6 笔', icon: 'Document', color: '#e6a23c' }
+      { title: '本月收入', value: '¥ 0.00', sub: '', icon: 'Top', color: '#67c23a' },
+      { title: '本月支出', value: '¥ 0.00', sub: '', icon: 'Bottom', color: '#f56c6c' },
+      { title: '本月结余', value: '¥ 0.00', sub: '', icon: 'Wallet', color: '#409eff' },
+      { title: '记账笔数', value: '0', sub: '', icon: 'Document', color: '#e6a23c' }
     ]
   }
 }
@@ -118,22 +124,19 @@ async function loadCategory() {
   loading.value = true
   try {
     const res = await getStatsCategory({ type: statsType.value })
-    categoryData.value = res.data || []
+    const raw = res.data || []
+    const totalAmount = raw.reduce((s, c) => s + (c.amount || 0), 0)
+    const totalCount = raw.reduce((s, c) => s + (c.count || 0), 0)
+    categoryData.value = raw.map(c => ({
+      category: c.category,
+      amount: c.amount || 0,
+      count: c.count || 0,
+      percent: totalAmount > 0 ? Math.round((c.amount || 0) / totalAmount * 100) : 0,
+      avgAmount: (c.count || 0) > 0 ? Number(((c.amount || 0) / (c.count || 1)).toFixed(2)) : 0
+    }))
   } catch (e) {
-    categoryData.value = mockCategory()
+    categoryData.value = []
   } finally { loading.value = false }
-  loadRecent()
-}
-
-function mockCategory() {
-  const list = [
-    { category: '餐饮', amount: 1860.5, count: 28, percent: 32, avgAmount: 66.4 },
-    { category: '购物', amount: 1280, count: 8, percent: 22, avgAmount: 160 },
-    { category: '交通', amount: 720, count: 15, percent: 12, avgAmount: 48 },
-    { category: '住房', amount: 1500, count: 2, percent: 26, avgAmount: 750 },
-    { category: '娱乐', amount: 320, count: 5, percent: 8, avgAmount: 64 }
-  ]
-  return list
 }
 
 function loadRecent() {

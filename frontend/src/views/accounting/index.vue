@@ -212,17 +212,9 @@ async function loadData() {
     }))
     total.value = res.data?.total || 0
   } catch (e) {
-    tableData.value = mockData()
-    total.value = tableData.value.length
+    tableData.value = []
+    total.value = 0
   } finally { loading.value = false }
-}
-
-function mockData() {
-  return [
-    { id: 1, date: '2026-06-01', item: '午餐团建', amount: 168.5, category: '餐饮', type: 'expense', payment: '微信', remark: '部门聚餐', createTime: '2026-06-01 12:00:00' },
-    { id: 2, date: '2026-06-02', item: '地铁通勤', amount: 12, category: '交通', type: 'expense', payment: '支付宝', remark: '', createTime: '2026-06-02 09:00:00' },
-    { id: 3, date: '2026-06-03', item: '6月工资', amount: 12000, category: '工资', type: 'income', payment: '银行卡', remark: '月度工资', createTime: '2026-06-03 10:00:00' }
-  ]
 }
 
 function formatMoney(val) {

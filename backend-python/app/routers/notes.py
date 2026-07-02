@@ -12,7 +12,7 @@ router = APIRouter(prefix="/api/app", tags=["备忘录"])
 @router.get("/note/page")
 def note_page(
     page: int = Query(1, ge=1),
-    size: int = Query(10, ge=1, le=10000),
+    size: int = Query(10, ge=1, le=100),
     keyword: str = Query("", description="关键字"),
     user: CurrentUser = Depends(get_current_user),
 ):

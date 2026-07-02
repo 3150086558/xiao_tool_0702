@@ -144,19 +144,20 @@ const connections = ref([])
 const currentConn = ref({})
 
 async function loadConnections() {
-  // 本地存储模拟，实际可调用后端接口
-  const saved = localStorage.getItem('db_connections')
-  if (saved) {
-    connections.value = JSON.parse(saved)
-  } else {
-    connections.value = [
-      { id: 1, name: '开发库', type: 'mysql', host: '127.0.0.1', port: 3306, database: 'test', username: 'root', password: '', connected: true }
-    ]
+  try {
+    const res = await request({ url: '/api/app/db-connections', method: 'get' })
+    connections.value = (res.connections || []).map(c => ({
+      ...c,
+      type: c.db_type,
+      connected: false
+    }))
+  } catch (e) {
+    connections.value = []
   }
 }
 
 function saveConnections() {
-  localStorage.setItem('db_connections', JSON.stringify(connections.value))
+  // 连接管理通过后端 API，无需本地存储
 }
 
 function handleSelectConn(conn) {
@@ -194,19 +195,26 @@ async function submitConn() {
   await connFormRef.value.validate()
   connSubmitLoading.value = true
   try {
-    // 调用后端测试连接（此处用本地保存模拟）
-    await new Promise((r) => setTimeout(r, 500))
-    const newConn = { ...connForm, connected: true }
-    if (connForm.id) {
-      const idx = connections.value.findIndex((c) => c.id === connForm.id)
-      if (idx > -1) connections.value[idx] = newConn
-    } else {
-      newConn.id = Date.now()
-      connections.value.push(newConn)
+    const payload = {
+      name: connForm.name,
+      db_type: connForm.type,
+      host: connForm.host,
+      port: connForm.port,
+      username: connForm.username,
+      password: connForm.password,
+      database: connForm.database,
+      sqlite_path: ''
     }
-    saveConnections()
-    ElMessage.success('连接成功并已保存')
+    if (connForm.id) {
+      await request({ url: '/api/app/db-connections/' + connForm.id, method: 'put', data: payload })
+    } else {
+      await request({ url: '/api/app/db-connections', method: 'post', data: payload })
+    }
+    ElMessage.success('保存成功')
     connDialogVisible.value = false
+    loadConnections()
+  } catch (e) {
+    ElMessage.error(e.response?.data?.detail || '保存失败')
   } finally {
     connSubmitLoading.value = false
   }
@@ -235,18 +243,30 @@ async function execSql() {
     const res = await request({
       url: '/api/app/db/query',
       method: 'post',
-      data: { connId: currentConn.value.id, sql: sql.value }
+      data: {
+        action: 'query',
+        config: {
+          db_type: currentConn.value.db_type || currentConn.value.type,
+          host: currentConn.value.host,
+          port: currentConn.value.port,
+          username: currentConn.value.username,
+          password: currentConn.value.password,
+          database: currentConn.value.database,
+          sqlite_path: currentConn.value.sqlite_path || ''
+        },
+        sql: sql.value
+      }
     })
-    const data = res.data || {}
-    resultRows.value = data.rows || data.records || []
-    resultColumns.value = resultRows.value.length ? Object.keys(resultRows.value[0]) : (data.columns || [])
-    execTime.value = data.elapsed || (Date.now() - start)
+    resultRows.value = (res.rows || []).map(r => {
+      const obj = {}
+      ;(res.columns || []).forEach((col, i) => { obj[col] = r[i] })
+      return obj
+    })
+    resultColumns.value = res.columns || []
+    execTime.value = Date.now() - start
     executed.value = true
     ElMessage.success('执行成功')
   } catch (e) {
-    // 模拟数据
-    resultRows.value = mockResult()
-    resultColumns.value = Object.keys(resultRows.value[0])
     execTime.value = Date.now() - start
     executed.value = true
   } finally {
@@ -255,11 +275,7 @@ async function execSql() {
 }
 
 function mockResult() {
-  return [
-    { id: 1, username: 'admin', name: '管理员', org: '总公司', status: '启用' },
-    { id: 2, username: 'zhangsan', name: '张三', org: '研发中心', status: '启用' },
-    { id: 3, username: 'lisi', name: '李四', org: '市场部', status: '禁用' }
-  ]
+  return []
 }
 
 function formatSql() {

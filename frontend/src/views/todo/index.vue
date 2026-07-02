@@ -177,7 +177,7 @@ async function submitForm() {
   await formRef.value.validate()
   submitLoading.value = true
   try {
-    const payload = { ...form, due_date: form.dueDate }
+    const payload = { title: form.title, priority: form.priority, due_date: form.dueDate, remark: form.remark }
     if (form.id) { await updateTodo(form.id, payload); ElMessage.success('编辑成功') }
     else { await createTodo(payload); ElMessage.success('新增成功') }
     dialogVisible.value = false

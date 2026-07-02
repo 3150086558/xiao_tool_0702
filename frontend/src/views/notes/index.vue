@@ -142,7 +142,7 @@ async function submitForm() {
     return
   }
   try {
-    const payload = { title: currentNote.title, content: currentNote.content }
+    const payload = { title: currentNote.title, content: currentNote.content, tags: currentNote.tags || [] }
     if (currentNote.id) {
       await updateNote(currentNote.id, payload)
       ElMessage.success('保存成功')

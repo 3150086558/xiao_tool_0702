@@ -53,7 +53,7 @@ def validate_payload(data: dict) -> Tuple[str, str, str, str, float, str, str]:
 
 
 def build_where(filters: dict, visible_user_ids: List[int]) -> Tuple[str, list]:
-    """构造查询条件，支持项目、消费分类、日期范围过滤。"""
+    """构造查询条件，支持项目、消费分类、日期范围、月份过滤。"""
     where, params = ["user_id = ANY(%s)"], [list(visible_user_ids)]
     item = (filters.get("item") or "").strip()
     category = (filters.get("category") or "").strip()
@@ -61,6 +61,7 @@ def build_where(filters: dict, visible_user_ids: List[int]) -> Tuple[str, list]:
     end_date = (filters.get("endDate") or "").strip()
     rtype = (filters.get("type") or "").strip()
     keyword = (filters.get("keyword") or "").strip()
+    month = (filters.get("month") or "").strip()
 
     if item:
         where.append("category LIKE %s")
@@ -68,6 +69,9 @@ def build_where(filters: dict, visible_user_ids: List[int]) -> Tuple[str, list]:
     if category:
         where.append("sub_category LIKE %s")
         params.append(f"%{category}%")
+    if month:
+        where.append("SUBSTRING(record_date, 1, 7) = %s")
+        params.append(month)
     if start_date:
         where.append("record_date >= %s")
         params.append(start_date)
@@ -90,7 +94,7 @@ def list_records(filters: dict, visible_user_ids: List[int]) -> list:
         cur = exec_sql(
             conn,
             f"""SELECT * FROM records WHERE {where}
-                ORDER BY record_date DESC, id DESC LIMIT 1000""",
+                ORDER BY record_date DESC, id DESC""",
             params,
         )
         return fetchall(cur)

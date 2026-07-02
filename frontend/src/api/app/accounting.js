@@ -49,7 +49,6 @@ export function importAccounting(formData, onUploadProgress) {
     url: '/api/app/accounting/import',
     method: 'post',
     data: formData,
-    headers: { 'Content-Type': 'multipart/form-data' },
     onUploadProgress
   })
 }

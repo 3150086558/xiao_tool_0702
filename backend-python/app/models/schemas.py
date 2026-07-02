@@ -29,6 +29,7 @@ class TodoBase(BaseModel):
     title: str = Field(..., description="标题")
     priority: str = Field("normal", description="优先级：low/normal/high")
     due_date: Optional[str] = Field(None, description="截止日期")
+    remark: str = Field("", description="描述")
 
 
 class TodoCreate(TodoBase):
@@ -46,6 +47,7 @@ class TodoUpdate(BaseModel):
 class NoteBase(BaseModel):
     title: str = Field(..., description="标题")
     content: str = Field("", description="内容")
+    tags: List[str] = Field(default_factory=list, description="标签")
 
 
 class NoteCreate(NoteBase):
