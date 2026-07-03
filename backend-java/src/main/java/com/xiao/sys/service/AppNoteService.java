@@ -13,7 +13,7 @@ public interface AppNoteService extends IService<AppNote> {
     /**
      * 分页查询备忘录
      */
-    PageResult<NoteDTO> getNotePage(Integer userId, String keyword, Integer page, Integer size);
+    PageResult<NoteDTO> getNotePage(Integer userId, String keyword, String type, Integer page, Integer size);
 
     /**
      * 创建备忘录

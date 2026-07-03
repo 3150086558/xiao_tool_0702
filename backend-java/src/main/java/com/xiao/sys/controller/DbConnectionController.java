@@ -66,6 +66,13 @@ public class DbConnectionController {
         return Result.success(Map.of("ok", deleted));
     }
 
+    @PostMapping("/test")
+    public Result<Map<String, Object>> testConnection(@RequestBody Map<String, Object> body) {
+        AppDbConnection conn = mapToEntity(body);
+        boolean success = dbConnectionService.testConnection(conn);
+        return Result.success(Map.of("success", success));
+    }
+
     private AppDbConnection mapToEntity(Map<String, Object> body) {
         AppDbConnection conn = new AppDbConnection();
         conn.setName(getStr(body, "name"));

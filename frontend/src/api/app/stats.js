@@ -1,10 +1,11 @@
 import request from '@/api/request'
 
 // 统计汇总卡片
-export function getStatsSummary() {
+export function getStatsSummary(params) {
   return request({
     url: '/api/app/stats/summary',
-    method: 'get'
+    method: 'get',
+    params
   })
 }
 

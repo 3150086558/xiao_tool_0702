@@ -1,92 +1,140 @@
 <template>
   <div class="app-container">
-    <el-row :gutter="16">
-      <el-col :span="6">
-        <el-card shadow="never">
-          <template #header>
-            <div class="card-header">
-              <span>待办筛选</span>
+    <el-card shadow="never" class="filter-container">
+      <el-form :inline="true" :model="query" class="search-form">
+        <el-form-item label="状态">
+          <el-select v-model="query.status" placeholder="全部" clearable style="width: 120px">
+            <el-option label="全部" value="all" />
+            <el-option label="未完成" value="undone" />
+            <el-option label="已完成" value="done" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="优先级">
+          <el-select v-model="query.priority" placeholder="全部" clearable style="width: 120px">
+            <el-option label="高" value="high" />
+            <el-option label="中" value="normal" />
+            <el-option label="低" value="low" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="关键词">
+          <el-input v-model="query.keyword" placeholder="标题或备注" clearable style="width: 180px" @keyup.enter="handleSearch" />
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" :icon="Search" @click="handleSearch">搜索</el-button>
+          <el-button :icon="Refresh" @click="handleReset">重置</el-button>
+        </el-form-item>
+      </el-form>
+    </el-card>
+
+    <el-card shadow="never" class="table-container">
+      <div class="toolbar">
+        <el-button type="primary" :icon="Plus" @click="handleAdd">新增待办</el-button>
+        <el-button :icon="Upload" @click="importDialogVisible = true">导入</el-button>
+        <el-button :icon="Download" @click="handleExport">导出</el-button>
+      </div>
+
+      <el-table v-loading="loading" :data="tableData" border stripe>
+        <el-table-column type="selection" width="50" align="center" />
+        <el-table-column type="index" label="序号" width="60" align="center" />
+        <el-table-column label="标题" min-width="200" show-overflow-tooltip>
+          <template #default="{ row }">
+            <span :style="{ textDecoration: row.done ? 'line-through' : 'none', color: row.done ? '#c0c4cc' : '#303133' }">
+              {{ row.title }}
+            </span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="priority" label="优先级" width="90" align="center">
+          <template #default="{ row }">
+            <el-tag size="small" :type="priorityType(row.priority)">{{ priorityText(row.priority) }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="status" label="状态" width="90" align="center">
+          <template #default="{ row }">
+            <el-switch
+              :model-value="row.done"
+              @change="handleToggle(row, $event)"
+              active-text="完成"
+              inactive-text="未完成"
+              inline-prompt
+            />
+          </template>
+        </el-table-column>
+        <el-table-column prop="creator" label="创建人" width="100" align="center" />
+        <el-table-column prop="assignee" label="负责人" width="100" align="center" />
+        <el-table-column prop="dueDate" label="截止时间" width="160" />
+        <el-table-column prop="createTime" label="创建时间" width="170" />
+        <el-table-column prop="completedAt" label="完成时间" width="170" />
+        <el-table-column prop="remark" label="备注" min-width="180" show-overflow-tooltip />
+        <el-table-column label="操作" width="160" fixed="right" align="center">
+          <template #default="{ row }">
+            <el-button link type="primary" @click="handleEdit(row)">编辑</el-button>
+            <el-button link type="danger" @click="handleDelete(row)">删除</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+
+      <div class="pagination-container">
+        <el-pagination
+          v-model:current-page="query.page"
+          v-model:page-size="query.size"
+          :total="total"
+          :page-sizes="[10, 20, 50, 100]"
+          layout="total, sizes, prev, pager, next, jumper"
+          background
+          @size-change="loadData"
+          @current-change="loadData"
+        />
+      </div>
+    </el-card>
+
+    <el-dialog v-model="importDialogVisible" title="导入待办事项" width="480px" @close="resetImport">
+      <div class="import-content">
+        <el-upload
+          ref="uploadRef"
+          class="import-upload"
+          :show-file-list="false"
+          :before-upload="handleImport"
+          :auto-upload="true"
+          accept=".xlsx,.xls,.csv"
+          drag
+        >
+          <el-icon class="el-icon--upload"><upload-filled /></el-icon>
+          <div class="el-upload__text">
+            将文件拖到此处，或<em>点击上传</em>
+          </div>
+          <template #tip>
+            <div class="el-upload__tip">
+              支持 .xlsx / .xls / .csv 格式，单个文件不超过 10MB
             </div>
           </template>
-          <el-radio-group v-model="activeStatus" style="width: 100%">
-            <el-radio-button value="all">全部</el-radio-button>
-            <el-radio-button value="undone">未完成</el-radio-button>
-            <el-radio-button value="done">已完成</el-radio-button>
-          </el-radio-group>
-          <el-divider />
-          <div class="filter-block">
-            <div class="filter-title">优先级</div>
-            <el-radio-group v-model="activePriority" class="priority-group">
-              <el-radio value="">全部</el-radio>
-              <el-radio value="high">高</el-radio>
-              <el-radio value="normal">中</el-radio>
-              <el-radio value="low">低</el-radio>
-            </el-radio-group>
-          </div>
-        </el-card>
-      </el-col>
+        </el-upload>
+      </div>
+      <template #footer>
+        <el-button @click="importDialogVisible = false">取消</el-button>
+      </template>
+    </el-dialog>
 
-      <el-col :span="18">
-        <el-card shadow="never">
-          <template #header>
-            <div class="card-header">
-              <span>待办事项</span>
-              <el-button type="primary" :icon="Plus" @click="handleAdd">新增待办</el-button>
-            </div>
-          </template>
-
-          <el-input
-            v-model="searchText"
-            placeholder="搜索标题或备注"
-            :prefix-icon="Search"
-            clearable
-            style="margin-bottom: 12px"
-          />
-
-          <div v-loading="loading">
-            <div v-if="!filteredData.length" class="empty-tip">
-              <el-empty description="暂无待办" />
-            </div>
-            <div
-              v-for="item in filteredData"
-              :key="item.id"
-              class="todo-item"
-              :class="{ done: item.done }"
-            >
-              <el-checkbox :model-value="item.done" @change="handleToggle(item, $event)" />
-              <div class="todo-content" @click="handleEdit(item)">
-                <div class="todo-title">{{ item.title }}</div>
-                <div class="todo-meta">
-                  <el-tag size="small" :type="priorityType(item.priority)">{{ priorityText(item.priority) }}</el-tag>
-                  <span v-if="item.dueDate" class="meta-item">
-                    <el-icon><Calendar /></el-icon>
-                    {{ item.dueDate }}
-                  </span>
-                  <span v-if="item.remark" class="meta-item remark-text">{{ item.remark }}</span>
-                </div>
-              </div>
-              <div class="todo-ops">
-                <el-button link type="primary" :icon="Edit" @click="handleEdit(item)" />
-                <el-button link type="danger" :icon="Delete" @click="handleDelete(item)" />
-              </div>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
-    </el-row>
-
-    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="520px" @close="resetForm">
+    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="560px" @close="resetForm">
       <el-form ref="formRef" :model="form" :rules="rules" label-width="88px">
         <el-form-item label="标题" prop="title">
           <el-input v-model="form.title" placeholder="请输入待办标题" />
         </el-form-item>
-        <el-form-item label="优先级" prop="priority">
-          <el-radio-group v-model="form.priority">
-            <el-radio value="high">高</el-radio>
-            <el-radio value="normal">中</el-radio>
-            <el-radio value="low">低</el-radio>
-          </el-radio-group>
-        </el-form-item>
+        <el-row :gutter="12">
+          <el-col :span="12">
+            <el-form-item label="优先级" prop="priority">
+              <el-radio-group v-model="form.priority">
+                <el-radio value="high">高</el-radio>
+                <el-radio value="normal">中</el-radio>
+                <el-radio value="low">低</el-radio>
+              </el-radio-group>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="负责人">
+              <el-input v-model="form.assignee" placeholder="请输入负责人" />
+            </el-form-item>
+          </el-col>
+        </el-row>
         <el-form-item label="截止时间" prop="dueDate">
           <el-date-picker
             v-model="form.dueDate"
@@ -112,17 +160,26 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Calendar, Delete, Edit, Plus, Search } from '@element-plus/icons-vue'
+import { Delete, Download, Edit, Plus, Refresh, Search, Upload, UploadFilled } from '@element-plus/icons-vue'
 import { createTodo, deleteTodo, getTodoPage, toggleTodoDone, updateTodo } from '@/api/app/todo'
 
 const loading = ref(false)
 const submitLoading = ref(false)
 const tableData = ref([])
-const searchText = ref('')
-const activeStatus = ref('all')
-const activePriority = ref('')
+const total = ref(0)
+
+const importDialogVisible = ref(false)
+const uploadRef = ref()
+
+const query = reactive({
+  keyword: '',
+  status: 'all',
+  priority: '',
+  page: 1,
+  size: 10
+})
 
 const dialogVisible = ref(false)
 const dialogTitle = ref('')
@@ -133,23 +190,13 @@ const form = reactive({
   priority: 'normal',
   dueDate: '',
   remark: '',
-  done: false
+  done: false,
+  assignee: ''
 })
 
 const rules = {
   title: [{ required: true, message: '请输入标题', trigger: 'blur' }]
 }
-
-const filteredData = computed(() => {
-  const keyword = searchText.value.trim()
-  return tableData.value.filter((item) => {
-    if (activeStatus.value === 'undone' && item.done) return false
-    if (activeStatus.value === 'done' && !item.done) return false
-    if (activePriority.value && item.priority !== activePriority.value) return false
-    if (!keyword) return true
-    return [item.title, item.remark].some((value) => String(value || '').includes(keyword))
-  })
-})
 
 function normalizeTodo(row = {}) {
   const done = row.done !== undefined ? Boolean(row.done) : Boolean(row.completed)
@@ -161,6 +208,9 @@ function normalizeTodo(row = {}) {
     remark: row.remark || '',
     done,
     completed: done ? 1 : 0,
+    creator: row.creator || '',
+    assignee: row.assignee || '',
+    completedAt: row.completedAt || row.completed_at || '',
     createTime: row.createTime || row.created_at || '',
     updateTime: row.updateTime || row.updated_at || ''
   }
@@ -169,10 +219,23 @@ function normalizeTodo(row = {}) {
 async function loadData() {
   loading.value = true
   try {
-    const res = await getTodoPage({ page: 1, size: 999 })
-    tableData.value = (res.data?.records || []).map(normalizeTodo)
+    const params = {
+      page: query.page,
+      size: query.size,
+      status: query.status,
+      priority: query.priority
+    }
+    const res = await getTodoPage(params)
+    const records = res.data?.records || res.data?.list || []
+    tableData.value = records.map(normalizeTodo).filter((item) => {
+      if (!query.keyword) return true
+      const kw = query.keyword.toLowerCase()
+      return (item.title || '').toLowerCase().includes(kw) || (item.remark || '').toLowerCase().includes(kw)
+    })
+    total.value = res.data?.total || tableData.value.length
   } catch (error) {
     tableData.value = []
+    total.value = 0
     ElMessage.error(error.response?.data?.detail || error.message || '待办查询失败')
   } finally {
     loading.value = false
@@ -187,6 +250,19 @@ function priorityType(priority) {
   return { high: 'danger', normal: 'warning', low: 'info' }[priority] || 'info'
 }
 
+function handleSearch() {
+  query.page = 1
+  loadData()
+}
+
+function handleReset() {
+  query.keyword = ''
+  query.status = 'all'
+  query.priority = ''
+  query.page = 1
+  handleSearch()
+}
+
 function handleAdd() {
   dialogTitle.value = '新增待办'
   Object.assign(form, {
@@ -195,7 +271,8 @@ function handleAdd() {
     priority: 'normal',
     dueDate: '',
     remark: '',
-    done: false
+    done: false,
+    assignee: ''
   })
   dialogVisible.value = true
 }
@@ -219,7 +296,8 @@ async function submitForm() {
       priority: form.priority,
       due_date: form.dueDate || null,
       remark: form.remark || '',
-      completed: form.done ? 1 : 0
+      completed: form.done ? 1 : 0,
+      assignee: form.assignee || ''
     }
     if (form.id) {
       await updateTodo(form.id, payload)
@@ -265,92 +343,48 @@ async function handleDelete(row) {
   }
 }
 
+async function handleImport() {
+  ElMessage.info('导入功能开发中')
+  return false
+}
+
+async function handleExport() {
+  ElMessage.info('导出功能开发中')
+}
+
+function resetImport() {
+  uploadRef.value?.clearFiles?.()
+}
+
 onMounted(loadData)
 </script>
 
 <style scoped>
-.card-header {
+.filter-container {
+  margin-bottom: 16px;
+}
+
+.search-form {
+  margin: 0;
+}
+
+.toolbar {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.filter-block {
-  padding-top: 4px;
-}
-
-.filter-title {
-  font-size: 13px;
-  color: #606266;
-  margin-bottom: 8px;
-}
-
-.priority-group {
-  display: flex;
-  flex-direction: column;
   gap: 8px;
+  margin-bottom: 12px;
 }
 
-.todo-item {
+.pagination-container {
   display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px;
-  border: 1px solid #ebeef5;
-  border-radius: 8px;
-  margin-bottom: 8px;
-  transition: background-color 0.2s ease;
+  justify-content: flex-end;
+  margin-top: 16px;
 }
 
-.todo-item:hover {
-  background: #f5f7fa;
+.import-content {
+  padding: 8px 0;
 }
 
-.todo-item.done .todo-title {
-  color: #c0c4cc;
-  text-decoration: line-through;
-}
-
-.todo-content {
-  flex: 1;
-  min-width: 0;
-  cursor: pointer;
-}
-
-.todo-title {
-  font-size: 14px;
-  color: #303133;
-  margin-bottom: 6px;
-}
-
-.todo-meta {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-  font-size: 12px;
-  color: #909399;
-}
-
-.meta-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.remark-text {
-  max-width: 320px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.todo-ops {
-  display: flex;
-  gap: 4px;
-}
-
-.empty-tip {
-  padding: 24px 0;
+.import-upload {
+  margin-bottom: 16px;
 }
 </style>

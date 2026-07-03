@@ -5,11 +5,9 @@
         <el-card shadow="never" class="conn-card">
           <template #header>
             <div class="card-header">
-              <span>数据库连接</span>
+              <span class="card-title">数据库连接</span>
               <div class="header-actions">
-                <el-button type="primary" size="small" :icon="Plus" @click="handleAddConn">新增</el-button>
-                <el-button size="small" :disabled="!currentConn.id" @click="handleEditConn">编辑</el-button>
-                <el-button size="small" type="danger" :disabled="!currentConn.id" @click="handleDeleteConn">删除</el-button>
+                <el-button type="primary" :icon="Plus" @click="handleAddConn">新增连接</el-button>
               </div>
             </div>
           </template>
@@ -22,16 +20,24 @@
               :class="{ active: currentConn.id === conn.id }"
               @click="handleSelectConn(conn)"
             >
+              <div class="conn-item-actions">
+                <el-tooltip content="编辑" placement="top">
+                  <el-button link type="primary" :icon="Edit" @click.stop="handleEditConnItem(conn)" />
+                </el-tooltip>
+                <el-tooltip content="删除" placement="top">
+                  <el-button link type="danger" :icon="Delete" @click.stop="handleDeleteConnItem(conn)" />
+                </el-tooltip>
+              </div>
               <el-icon class="db-icon"><Coin /></el-icon>
               <div class="conn-info">
                 <div class="conn-name">{{ conn.name }}</div>
                 <div class="conn-type">{{ conn.dbTypeLabel }} / {{ connectionSummary(conn) }}</div>
               </div>
-              <el-tag :type="conn.connected ? 'success' : 'info'" size="small">
-                {{ conn.connected ? '可用' : '未验证' }}
+              <el-tag :type="conn.connected ? 'success' : 'danger'" size="small" effect="light">
+                {{ conn.connected ? '已连接' : '未连接' }}
               </el-tag>
             </div>
-            <el-empty v-if="!connections.length" description="暂无连接" />
+            <el-empty v-if="!connections.length" description="暂无连接" :image-size="80" />
           </div>
         </el-card>
 
@@ -68,15 +74,15 @@
       </el-col>
 
       <el-col :span="17">
-        <el-card shadow="never">
+        <el-card shadow="never" class="query-card">
           <template #header>
             <div class="card-header">
-              <span>数据库查询</span>
+              <span class="card-title">SQL 查询编辑器</span>
               <div class="header-actions">
-                <el-button :icon="VideoPlay" type="primary" :disabled="!currentConn.id" :loading="execLoading" @click="execSql">
+                <el-button :icon="VideoPlay" type="success" :disabled="!currentConn.id" :loading="execLoading" @click="execSql">
                   执行 SQL
                 </el-button>
-                <el-button :disabled="!selectedTable" @click="showTableSchema()">查表结构</el-button>
+                <el-button :disabled="!selectedTable" @click="showTableSchema()">表结构</el-button>
                 <el-button :disabled="!selectedTable" @click="previewTableData()">预览数据</el-button>
                 <el-button :icon="RefreshLeft" @click="formatSql">格式化</el-button>
                 <el-button :icon="Delete" @click="clearSql">清空</el-button>
@@ -85,25 +91,32 @@
           </template>
 
           <div class="sql-meta">
-            <span>当前连接：</span>
-            <el-tag v-if="currentConn.id" type="success">{{ currentConn.name }}</el-tag>
-            <span v-else class="warn-text">请先选择左侧连接</span>
-            <span class="meta-divider">|</span>
-            <span>数据库类型：</span>
-            <el-tag size="small">{{ currentConn.dbTypeLabel || '-' }}</el-tag>
-            <span class="meta-divider">|</span>
-            <span>当前表：</span>
-            <el-tag size="small" type="info">{{ selectedTable || '-' }}</el-tag>
+            <div class="meta-item">
+              <span class="meta-label">当前连接</span>
+              <el-tag v-if="currentConn.id" type="success" effect="dark">{{ currentConn.name }}</el-tag>
+              <span v-else class="warn-text">请先选择左侧连接</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">数据库类型</span>
+              <el-tag size="small" effect="plain">{{ currentConn.dbTypeLabel || '-' }}</el-tag>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">当前表</span>
+              <el-tag size="small" type="info" effect="plain">{{ selectedTable || '-' }}</el-tag>
+            </div>
           </div>
 
-          <el-input
-            v-model="sql"
-            type="textarea"
-            :rows="9"
-            placeholder="请输入 SQL，例如：SELECT * FROM records LIMIT 100;"
-            resize="vertical"
-            @keydown.f5.prevent="execSql"
-          />
+          <div class="sql-editor-wrap">
+            <el-input
+              v-model="sql"
+              type="textarea"
+              :rows="14"
+              placeholder="请输入 SQL，例如：SELECT * FROM records LIMIT 100;&#10;&#10;快捷键：F5 执行"
+              resize="vertical"
+              class="sql-editor"
+              @keydown.f5.prevent="execSql"
+            />
+          </div>
 
           <div class="result-section">
             <div class="result-header">
@@ -127,7 +140,7 @@
       </el-col>
     </el-row>
 
-    <el-dialog v-model="connDialogVisible" :title="connDialogTitle" width="520px" @close="resetConnForm">
+    <el-dialog v-model="connDialogVisible" :title="connDialogTitle" width="560px" @close="resetConnForm">
       <el-form ref="connFormRef" :model="connForm" :rules="connRules" label-width="100px">
         <el-form-item label="连接名称" prop="name">
           <el-input v-model="connForm.name" placeholder="如：开发库" />
@@ -157,6 +170,14 @@
         <el-form-item v-if="connForm.type === 'sqlite'" label="SQLite 路径" prop="sqlite_path">
           <el-input v-model="connForm.sqlite_path" placeholder="如：D:/data/test.db" />
         </el-form-item>
+        <el-form-item label="连接测试">
+          <el-button type="primary" plain :icon="Connection" :loading="testLoading" @click="testConnection">
+            测试连接
+          </el-button>
+          <span v-if="testResult !== null" :class="testResult ? 'test-success' : 'test-fail'">
+            {{ testResult ? '连接成功' : '连接失败' }}
+          </span>
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="connDialogVisible = false">取消</el-button>
@@ -169,7 +190,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Coin, Delete, Plus, RefreshLeft, VideoPlay } from '@element-plus/icons-vue'
+import { Coin, Connection, Delete, Edit, Plus, RefreshLeft, VideoPlay } from '@element-plus/icons-vue'
 import request from '@/api/request'
 
 const connections = ref([])
@@ -190,6 +211,8 @@ const resultRows = ref([])
 const connDialogVisible = ref(false)
 const connDialogTitle = ref('')
 const connSubmitLoading = ref(false)
+const testLoading = ref(false)
+const testResult = ref(null)
 const connFormRef = ref()
 const connForm = reactive({
   id: null,
@@ -215,32 +238,37 @@ const filteredTables = computed(() => {
 })
 
 function normalizeConnection(row = {}) {
-  const dbType = row.db_type || row.type || 'mysql'
+  const dbType = row.db_type || row.dbType || row.type || 'mysql'
+  const sqlitePath = row.sqlite_path || row.sqlitePath || ''
   return {
     ...row,
     type: dbType,
     db_type: dbType,
+    dbType: dbType,
+    sqlite_path: sqlitePath,
+    sqlitePath: sqlitePath,
     dbTypeLabel: dbType === 'postgresql' ? 'PostgreSQL' : dbType === 'sqlite' ? 'SQLite' : 'MySQL',
     connected: Boolean(row.connected)
   }
 }
 
 function connectionSummary(conn) {
-  if ((conn.db_type || conn.type) === 'sqlite') {
-    return conn.sqlite_path || '-'
+  const dbType = conn.db_type || conn.dbType || conn.type
+  if (dbType === 'sqlite') {
+    return conn.sqlite_path || conn.sqlitePath || '-'
   }
   return `${conn.host || '-'}:${conn.port || '-'} / ${conn.database || '-'}`
 }
 
 function buildDbConfig(conn) {
   return {
-    db_type: conn.db_type || conn.type,
+    db_type: conn.db_type || conn.dbType || conn.type,
     host: conn.host || '',
     port: conn.port || 0,
     username: conn.username || '',
     password: conn.password || '',
     database: conn.database || '',
-    sqlite_path: conn.sqlite_path || ''
+    sqlite_path: conn.sqlite_path || conn.sqlitePath || ''
   }
 }
 
@@ -259,7 +287,7 @@ function markConnectionStatus(connId, connected) {
 async function loadConnections() {
   try {
     const res = await request({ url: '/api/app/db-connections', method: 'get' })
-    connections.value = (res.connections || []).map(normalizeConnection)
+    connections.value = (res.data?.connections || []).map(normalizeConnection)
     if (currentConn.value.id) {
       const selected = connections.value.find((item) => item.id === currentConn.value.id)
       currentConn.value = selected || {}
@@ -283,7 +311,7 @@ async function loadTables(showMessage = false) {
         config: buildDbConfig(currentConn.value)
       }
     })
-    tables.value = res.tables || []
+    tables.value = res.data?.tables || []
     if (!selectedTable.value || !tables.value.includes(selectedTable.value)) {
       selectedTable.value = tables.value[0] || ''
     }
@@ -324,6 +352,7 @@ function handleDbTypeChange() {
 
 function handleAddConn() {
   connDialogTitle.value = '新增连接'
+  testResult.value = null
   Object.assign(connForm, {
     id: null,
     name: '',
@@ -343,30 +372,41 @@ function handleEditConn() {
     ElMessage.warning('请先选择连接')
     return
   }
+  handleEditConnItem(currentConn.value)
+}
+
+function handleEditConnItem(conn) {
   connDialogTitle.value = '编辑连接'
+  testResult.value = null
   Object.assign(connForm, {
-    id: currentConn.value.id,
-    name: currentConn.value.name || '',
-    type: currentConn.value.db_type || currentConn.value.type || 'mysql',
-    host: currentConn.value.host || '127.0.0.1',
-    port: currentConn.value.port || 3306,
-    database: currentConn.value.database || '',
-    username: currentConn.value.username || '',
+    id: conn.id,
+    name: conn.name || '',
+    type: conn.db_type || conn.dbType || conn.type || 'mysql',
+    host: conn.host || '127.0.0.1',
+    port: conn.port || 3306,
+    database: conn.database || '',
+    username: conn.username || '',
     password: '',
-    sqlite_path: currentConn.value.sqlite_path || ''
+    sqlite_path: conn.sqlite_path || conn.sqlitePath || ''
   })
   connDialogVisible.value = true
 }
 
 async function handleDeleteConn() {
   if (!currentConn.value.id) return
+  handleDeleteConnItem(currentConn.value)
+}
+
+async function handleDeleteConnItem(conn) {
   try {
-    await ElMessageBox.confirm(`确定删除连接“${currentConn.value.name}”吗？`, '提示', { type: 'warning' })
-    await request({ url: `/api/app/db-connections/${currentConn.value.id}`, method: 'delete' })
+    await ElMessageBox.confirm(`确定删除连接“${conn.name}”吗？`, '提示', { type: 'warning' })
+    await request({ url: `/api/app/db-connections/${conn.id}`, method: 'delete' })
     ElMessage.success('连接已删除')
-    currentConn.value = {}
-    tables.value = []
-    selectedTable.value = ''
+    if (currentConn.value.id === conn.id) {
+      currentConn.value = {}
+      tables.value = []
+      selectedTable.value = ''
+    }
     await loadConnections()
   } catch (error) {
     if (error !== 'cancel' && error !== 'close') {
@@ -377,6 +417,40 @@ async function handleDeleteConn() {
 
 function resetConnForm() {
   connFormRef.value?.resetFields()
+  testResult.value = null
+}
+
+async function testConnection() {
+  testLoading.value = true
+  testResult.value = null
+  try {
+    const config = {
+      db_type: connForm.type,
+      host: connForm.host,
+      port: connForm.port,
+      username: connForm.username,
+      password: connForm.password,
+      database: connForm.database,
+      sqlite_path: connForm.sqlite_path
+    }
+    const res = await request({
+      url: '/api/app/db-connections/test',
+      method: 'post',
+      data: config
+    })
+    const success = res.data?.success ?? false
+    testResult.value = success
+    if (success) {
+      ElMessage.success('连接测试成功')
+    } else {
+      ElMessage.error(res.data?.message || '连接测试失败')
+    }
+  } catch (error) {
+    testResult.value = false
+    ElMessage.error(error.response?.data?.detail || error.message || '连接测试失败')
+  } finally {
+    testLoading.value = false
+  }
 }
 
 async function submitConn() {
@@ -454,8 +528,8 @@ async function execSql(showSuccess = true) {
         sql: sql.value.trim()
       }
     })
-    resultColumns.value = res.columns || []
-    resultRows.value = mapRows(resultColumns.value, res.rows || [])
+    resultColumns.value = res.data?.columns || []
+    resultRows.value = mapRows(resultColumns.value, res.data?.rows || [])
     execTime.value = Date.now() - start
     resultTitle.value = 'SQL 查询结果'
     executed.value = true
@@ -491,7 +565,7 @@ async function showTableSchema(table = selectedTable.value) {
         table
       }
     })
-    resultRows.value = (res.columns || []).map((item) => ({
+    resultRows.value = (res.data?.columns || []).map((item) => ({
       字段名: item.name,
       数据类型: item.type,
       可空: item.nullable,
@@ -558,6 +632,12 @@ onMounted(loadConnections)
   gap: 12px;
 }
 
+.card-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #303133;
+}
+
 .header-actions {
   display: flex;
   align-items: center;
@@ -567,37 +647,53 @@ onMounted(loadConnections)
 
 .conn-list,
 .table-list {
-  max-height: 320px;
+  max-height: 340px;
   overflow-y: auto;
 }
 
-.conn-item,
-.table-item {
+.conn-item {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px;
+  padding: 12px;
   border: 1px solid #ebeef5;
   border-radius: 8px;
   margin-bottom: 8px;
   cursor: pointer;
   transition: all 0.2s ease;
+  background: #fff;
 }
 
-.conn-item:hover,
-.table-item:hover {
+.conn-item:hover {
   background: #f5f7fa;
+  border-color: #dcdfe6;
 }
 
-.conn-item.active,
-.table-item.active {
+.conn-item.active {
   background: #ecf5ff;
   border-color: #409eff;
 }
 
+.conn-item-actions {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  display: flex;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  z-index: 10;
+}
+
+.conn-item:hover .conn-item-actions {
+  opacity: 1;
+}
+
 .db-icon {
-  font-size: 20px;
+  font-size: 22px;
   color: #409eff;
+  flex-shrink: 0;
 }
 
 .conn-info {
@@ -605,26 +701,55 @@ onMounted(loadConnections)
   min-width: 0;
 }
 
-.conn-name,
-.table-name {
+.conn-name {
   font-size: 14px;
   font-weight: 600;
   color: #303133;
+  margin-bottom: 4px;
 }
 
 .conn-type {
   font-size: 12px;
   color: #909399;
-  margin-top: 2px;
 }
 
 .table-item {
+  display: flex;
+  align-items: center;
   justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid #ebeef5;
+  border-radius: 6px;
+  margin-bottom: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.table-item:hover {
+  background: #f5f7fa;
+}
+
+.table-item.active {
+  background: #ecf5ff;
+  border-color: #409eff;
+}
+
+.table-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: #303133;
 }
 
 .table-item-actions {
   display: flex;
-  gap: 6px;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.table-item:hover .table-item-actions {
+  opacity: 1;
 }
 
 .empty-tables {
@@ -632,22 +757,45 @@ onMounted(loadConnections)
 }
 
 .sql-meta {
-  margin-bottom: 12px;
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  background: #f5f7fa;
+  border-radius: 8px;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 20px;
   flex-wrap: wrap;
   font-size: 13px;
   color: #606266;
 }
 
-.meta-divider {
-  color: #dcdfe6;
-  margin: 0 4px;
+.meta-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.meta-label {
+  color: #909399;
+  font-weight: 500;
 }
 
 .warn-text {
   color: #e6a23c;
+  font-weight: 500;
+}
+
+.sql-editor-wrap {
+  margin-bottom: 16px;
+}
+
+.sql-editor :deep(.el-textarea__inner) {
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  padding: 12px;
+  border-radius: 8px;
+  background: #fafafa;
 }
 
 .result-section {
@@ -658,14 +806,27 @@ onMounted(loadConnections)
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
   color: #303133;
   font-weight: 600;
+  font-size: 14px;
 }
 
 .result-info {
   font-size: 12px;
   color: #909399;
   font-weight: 400;
+}
+
+.test-success {
+  color: #67c23a;
+  margin-left: 12px;
+  font-weight: 500;
+}
+
+.test-fail {
+  color: #f56c6c;
+  margin-left: 12px;
+  font-weight: 500;
 }
 </style>

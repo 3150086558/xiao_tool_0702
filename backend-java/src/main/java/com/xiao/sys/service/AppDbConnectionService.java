@@ -32,4 +32,9 @@ public interface AppDbConnectionService {
      * 根据ID获取连接
      */
     AppDbConnection getConnectionById(Integer id, Integer userId);
+
+    /**
+     * 测试数据库连接
+     */
+    boolean testConnection(AppDbConnection conn);
 }

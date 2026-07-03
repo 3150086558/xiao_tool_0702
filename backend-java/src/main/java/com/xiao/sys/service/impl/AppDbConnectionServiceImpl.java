@@ -76,4 +76,47 @@ public class AppDbConnectionServiceImpl implements AppDbConnectionService {
         wrapper.eq("id", id).eq("user_id", userId);
         return dbConnectionMapper.selectOne(wrapper);
     }
+
+    @Override
+    public boolean testConnection(AppDbConnection conn) {
+        String dbType = conn.getDbType() != null ? conn.getDbType() : "mysql";
+        String url;
+        String driver;
+        String username = conn.getUsername() != null ? conn.getUsername() : "";
+        String password = conn.getPassword() != null ? conn.getPassword() : "";
+        String host = conn.getHost() != null ? conn.getHost() : "127.0.0.1";
+        int port = conn.getPort() != null ? conn.getPort() : 3306;
+        String database = conn.getDatabase() != null ? conn.getDatabase() : "";
+        String sqlitePath = conn.getSqlitePath() != null ? conn.getSqlitePath() : "";
+
+        switch (dbType) {
+            case "postgresql":
+                driver = "org.postgresql.Driver";
+                url = "jdbc:postgresql://" + host + ":" + port + "/" + database;
+                break;
+            case "sqlite":
+                driver = "org.sqlite.JDBC";
+                url = "jdbc:sqlite:" + sqlitePath;
+                break;
+            case "mysql":
+            default:
+                driver = "com.mysql.cj.jdbc.Driver";
+                url = "jdbc:mysql://" + host + ":" + port + "/" + database
+                        + "?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true";
+                break;
+        }
+
+        java.sql.Connection sqlConn = null;
+        try {
+            Class.forName(driver);
+            sqlConn = java.sql.DriverManager.getConnection(url, username, password);
+            return sqlConn != null && !sqlConn.isClosed();
+        } catch (Exception e) {
+            return false;
+        } finally {
+            if (sqlConn != null) {
+                try { sqlConn.close(); } catch (Exception ignored) {}
+            }
+        }
+    }
 }

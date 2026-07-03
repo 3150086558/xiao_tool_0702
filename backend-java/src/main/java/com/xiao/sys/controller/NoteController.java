@@ -42,9 +42,10 @@ public class NoteController {
     public Result<PageResult<NoteDTO>> getNotePage(
             @RequestParam(defaultValue = "1") Integer page,
             @RequestParam(defaultValue = "10") Integer size,
-            @RequestParam(required = false) String keyword) {
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String type) {
         Integer userId = getCurrentUserId();
-        PageResult<NoteDTO> result = appNoteService.getNotePage(userId, keyword, page, size);
+        PageResult<NoteDTO> result = appNoteService.getNotePage(userId, keyword, type, page, size);
         return Result.success(result);
     }
 

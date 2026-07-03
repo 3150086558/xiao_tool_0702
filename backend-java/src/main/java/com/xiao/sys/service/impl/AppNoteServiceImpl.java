@@ -32,7 +32,7 @@ public class AppNoteServiceImpl extends ServiceImpl<AppNoteMapper, AppNote> impl
     }
 
     @Override
-    public PageResult<NoteDTO> getNotePage(Integer userId, String keyword, Integer page, Integer size) {
+    public PageResult<NoteDTO> getNotePage(Integer userId, String keyword, String type, Integer page, Integer size) {
         // 设置默认分页参数
         int pageNum = page == null || page < 1 ? 1 : page;
         int pageSize = size == null || size < 1 ? 10 : size;
@@ -40,6 +40,11 @@ public class AppNoteServiceImpl extends ServiceImpl<AppNoteMapper, AppNote> impl
         // 构建查询条件
         LambdaQueryWrapper<AppNote> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(AppNote::getUserId, userId);
+
+        // 按类型筛选
+        if (type != null && !type.trim().isEmpty()) {
+            wrapper.eq(AppNote::getNoteType, type.trim());
+        }
 
         // 关键字搜索（标题或内容）
         if (keyword != null && !keyword.trim().isEmpty()) {
@@ -75,6 +80,7 @@ public class AppNoteServiceImpl extends ServiceImpl<AppNoteMapper, AppNote> impl
         note.setOrgId(dto.getOrgId());
         note.setTitle(dto.getTitle().trim());
         note.setContent(dto.getContent() != null ? dto.getContent().trim() : "");
+        note.setNoteType(dto.getNoteType() != null ? dto.getNoteType().trim() : "");
         // tags 直接存储前端传来的 JSON 字符串
         note.setTags(dto.getTags() != null ? dto.getTags() : "");
 
@@ -102,6 +108,7 @@ public class AppNoteServiceImpl extends ServiceImpl<AppNoteMapper, AppNote> impl
 
         note.setTitle(dto.getTitle().trim());
         note.setContent(dto.getContent() != null ? dto.getContent().trim() : "");
+        note.setNoteType(dto.getNoteType() != null ? dto.getNoteType().trim() : "");
         // tags 直接存储前端传来的 JSON 字符串
         note.setTags(dto.getTags() != null ? dto.getTags() : "");
         note.setUpdatedAt(LocalDateTime.now().format(DATE_FORMATTER));
@@ -132,6 +139,7 @@ public class AppNoteServiceImpl extends ServiceImpl<AppNoteMapper, AppNote> impl
         dto.setOrgId(note.getOrgId());
         dto.setTitle(note.getTitle());
         dto.setContent(note.getContent());
+        dto.setNoteType(note.getNoteType());
         dto.setTags(note.getTags());
         dto.setCreateTime(note.getCreatedAt());
         dto.setUpdateTime(note.getUpdatedAt());

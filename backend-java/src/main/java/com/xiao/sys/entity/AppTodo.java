@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
  * 待办事项实体类
@@ -15,6 +16,7 @@ public class AppTodo {
     private Integer id;
 
     // 用户ID
+    @JsonProperty("user_id")
     private Integer userId;
 
     // 组织ID（数据库中可能不存在）
@@ -31,15 +33,30 @@ public class AppTodo {
     private String priority;
 
     // 截止日期
+    @JsonProperty("due_date")
     private String dueDate;
 
     // 备注
     private String remark;
 
+    // 创建人
+    @JsonProperty("creator")
+    private String creator;
+
+    // 负责人
+    @JsonProperty("assignee")
+    private String assignee;
+
+    // 完成时间
+    @JsonProperty("completed_at")
+    private String completedAt;
+
     // 创建时间
+    @JsonProperty("created_at")
     private String createdAt;
 
     // 更新时间
+    @JsonProperty("updated_at")
     private String updatedAt;
 
     public Integer getId() {
@@ -112,6 +129,30 @@ public class AppTodo {
 
     public void setCreatedAt(String createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public String getCreator() {
+        return creator;
+    }
+
+    public void setCreator(String creator) {
+        this.creator = creator;
+    }
+
+    public String getAssignee() {
+        return assignee;
+    }
+
+    public void setAssignee(String assignee) {
+        this.assignee = assignee;
+    }
+
+    public String getCompletedAt() {
+        return completedAt;
+    }
+
+    public void setCompletedAt(String completedAt) {
+        this.completedAt = completedAt;
     }
 
     public String getUpdatedAt() {

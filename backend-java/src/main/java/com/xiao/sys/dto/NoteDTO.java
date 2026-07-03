@@ -17,6 +17,8 @@ public class NoteDTO {
 
     private String tags;
 
+    private String noteType;
+
     private String createTime;
 
     private String updateTime;
@@ -73,6 +75,14 @@ public class NoteDTO {
 
     public void setTags(String tags) {
         this.tags = tags;
+    }
+
+    public String getNoteType() {
+        return noteType;
+    }
+
+    public void setNoteType(String noteType) {
+        this.noteType = noteType;
     }
 
     public String getCreateTime() {

@@ -6,9 +6,16 @@
           <template #header>
             <div class="card-header">
               <span>备忘录</span>
-              <el-button type="primary" size="small" :icon="Plus" @click="handleAdd">新增</el-button>
+              <div>
+                <el-button size="small" @click="handleExport" :icon="Download" style="margin-right: 6px">导出</el-button>
+                <el-button type="primary" size="small" @click="handleAdd" :icon="Plus">新增</el-button>
+              </div>
             </div>
           </template>
+
+          <el-select v-model="selectedType" placeholder="全部类型" clearable style="width: 100%; margin-bottom: 8px" @change="loadData">
+            <el-option v-for="item in noteTypes" :key="item.value" :label="item.label" :value="item.value" />
+          </el-select>
 
           <el-input
             v-model="searchText"
@@ -29,7 +36,10 @@
               :class="{ active: currentNote.id === item.id }"
               @click="handleSelect(item)"
             >
-              <div class="note-title">{{ item.title || '无标题' }}</div>
+              <div class="note-title">
+                <span>{{ item.title || '无标题' }}</span>
+                <el-tag v-if="item.noteType" size="small" type="info" class="note-type-tag">{{ typeLabel(item.noteType) }}</el-tag>
+              </div>
               <div class="note-time">{{ item.updateTime || item.createTime }}</div>
               <div class="note-summary">{{ summarize(item.content) }}</div>
             </div>
@@ -49,20 +59,25 @@
             </div>
           </template>
 
-          <el-form :model="currentNote" label-width="0">
-            <el-form-item>
+          <el-form :model="currentNote" label-width="80px">
+            <el-form-item label="标题">
               <el-input v-model="currentNote.title" placeholder="请输入标题" size="large" />
             </el-form-item>
-            <el-form-item>
+            <el-form-item label="类型">
+              <el-select v-model="currentNote.noteType" placeholder="请选择类型" clearable style="width: 200px">
+                <el-option v-for="item in noteTypes" :key="item.value" :label="item.label" :value="item.value" />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="内容">
               <el-input
                 v-model="currentNote.content"
                 type="textarea"
-                :rows="16"
+                :rows="14"
                 placeholder="请输入内容..."
                 resize="none"
               />
             </el-form-item>
-            <el-form-item>
+            <el-form-item label="标签">
               <el-tag
                 v-for="tag in currentNote.tags"
                 :key="tag"
@@ -93,17 +108,21 @@
 <script setup>
 import { computed, nextTick, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Check, Delete, Plus, Search } from '@element-plus/icons-vue'
+import { Check, Delete, Download, Plus, Search } from '@element-plus/icons-vue'
 import { createNote, deleteNote, getNotePage, updateNote } from '@/api/app/note'
+import { getDictDataByCode } from '@/api/system/dict'
 
 const loading = ref(false)
 const submitLoading = ref(false)
 const noteList = ref([])
 const searchText = ref('')
+const selectedType = ref('')
+const noteTypes = ref([])
 const currentNote = reactive({
   id: null,
   title: '',
   content: '',
+  noteType: '',
   tags: [],
   createTime: '',
   updateTime: ''
@@ -115,8 +134,9 @@ const tagInputRef = ref()
 
 const filteredList = computed(() => {
   const keyword = searchText.value.trim()
-  if (!keyword) return noteList.value
   return noteList.value.filter((item) => {
+    if (selectedType.value && item.noteType !== selectedType.value) return false
+    if (!keyword) return true
     return [item.title, item.content].some((value) => String(value || '').includes(keyword))
   })
 })
@@ -126,6 +146,7 @@ function normalizeNote(row = {}) {
     id: row.id ?? null,
     title: row.title || '',
     content: row.content || '',
+    noteType: row.noteType || row.note_type || '',
     tags: Array.isArray(row.tags) ? [...row.tags] : [],
     createTime: row.createTime || row.created_at || '',
     updateTime: row.updateTime || row.updated_at || ''
@@ -140,10 +161,46 @@ function summarize(content) {
   return String(content || '').replace(/\s+/g, ' ').slice(0, 48)
 }
 
+function typeLabel(value) {
+  const item = noteTypes.value.find((t) => t.value === value)
+  return item ? item.label : value
+}
+
+async function loadNoteTypes() {
+  try {
+    const res = await getDictDataByCode('note_type')
+    if (res.code === 0 || res.code === 200) {
+      const list = res.data || []
+      noteTypes.value = list.map((item) => ({
+        label: item.item_label || item.itemLabel || item.label || '',
+        value: item.item_value || item.itemValue || item.value || ''
+      })).filter((item) => item.value)
+    } else {
+      noteTypes.value = [
+        { label: '工作', value: 'work' },
+        { label: '生活', value: 'life' },
+        { label: '学习', value: 'study' },
+        { label: '其他', value: 'other' }
+      ]
+    }
+  } catch (error) {
+    noteTypes.value = [
+      { label: '工作', value: 'work' },
+      { label: '生活', value: 'life' },
+      { label: '学习', value: 'study' },
+      { label: '其他', value: 'other' }
+    ]
+  }
+}
+
 async function loadData(targetId = null) {
   loading.value = true
   try {
-    const res = await getNotePage({ page: 1, size: 999 })
+    const params = { page: 1, size: 999 }
+    if (selectedType.value) {
+      params.type = selectedType.value
+    }
+    const res = await getNotePage(params)
     noteList.value = (res.data?.records || []).map(normalizeNote)
 
     if (targetId) {
@@ -196,6 +253,7 @@ async function submitForm() {
     const payload = {
       title,
       content: currentNote.content || '',
+      note_type: currentNote.noteType || '',
       tags: JSON.stringify(Array.isArray(currentNote.tags) ? currentNote.tags : [])
     }
     let savedId = currentNote.id
@@ -229,6 +287,10 @@ async function handleDelete(row) {
   }
 }
 
+function handleExport() {
+  ElMessage.info('导出功能开发中')
+}
+
 function showTagInput() {
   tagInputVisible.value = true
   nextTick(() => tagInputRef.value?.focus())
@@ -247,7 +309,10 @@ function removeTag(tag) {
   currentNote.tags = currentNote.tags.filter((item) => item !== tag)
 }
 
-onMounted(loadData)
+onMounted(() => {
+  loadNoteTypes()
+  loadData()
+})
 </script>
 
 <style scoped>
@@ -283,6 +348,14 @@ onMounted(loadData)
   font-weight: 600;
   color: #303133;
   margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.note-type-tag {
+  flex-shrink: 0;
 }
 
 .note-time {

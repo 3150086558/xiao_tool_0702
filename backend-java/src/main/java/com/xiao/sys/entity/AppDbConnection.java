@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
  * 数据库连接实体类
@@ -15,12 +16,14 @@ public class AppDbConnection {
     private Integer id;
 
     // 用户ID
+    @JsonProperty("user_id")
     private Integer userId;
 
     // 连接名称
     private String name;
 
     // 数据库类型 mysql/postgresql/sqlite
+    @JsonProperty("db_type")
     private String dbType;
 
     // 主机地址
@@ -39,12 +42,15 @@ public class AppDbConnection {
     private String password;
 
     // SQLite文件路径
+    @JsonProperty("sqlite_path")
     private String sqlitePath;
 
     // 创建时间
+    @JsonProperty("created_at")
     private String createdAt;
 
     // 更新时间
+    @JsonProperty("updated_at")
     private String updatedAt;
 
     // 连接状态（非数据库字段）

@@ -7,7 +7,7 @@
         </el-form-item>
         <el-form-item label="消费分类">
           <el-select v-model="query.category" placeholder="全部" clearable style="width: 150px">
-            <el-option v-for="item in categories" :key="item" :label="item" :value="item" />
+            <el-option v-for="item in categories" :key="item.value" :label="item.label" :value="item.value" />
           </el-select>
         </el-form-item>
         <el-form-item label="日期">
@@ -32,11 +32,8 @@
       <div class="toolbar">
         <el-button type="primary" :icon="Plus" @click="handleAdd">新增</el-button>
         <el-button type="danger" :icon="Delete" @click="handleDeleteAll">删除全部</el-button>
-        <el-upload :show-file-list="false" :before-upload="handleImport" accept=".xlsx,.xls,.csv">
-          <el-button :icon="Upload">导入</el-button>
-        </el-upload>
+        <el-button :icon="Upload" @click="importDialogVisible = true">导入</el-button>
         <el-button :icon="Download" @click="handleExport">导出</el-button>
-        <el-button :icon="Document" @click="handleDownloadTemplate">下载模板</el-button>
       </div>
 
       <el-table v-loading="loading" :data="tableData" border stripe show-summary :summary-method="getSummaries">
@@ -100,6 +97,49 @@
       </div>
     </el-dialog>
 
+    <el-dialog v-model="importDialogVisible" title="导入记账数据" width="480px" @close="resetImport">
+      <div class="import-content">
+        <div class="import-tip">
+          <el-link type="primary" :icon="Document" @click="handleDownloadTemplate">下载导入模板</el-link>
+        </div>
+        <el-upload
+          ref="uploadRef"
+          class="import-upload"
+          :show-file-list="false"
+          :before-upload="handleImport"
+          :auto-upload="true"
+          accept=".xlsx,.xls,.csv"
+          drag
+        >
+          <el-icon class="el-icon--upload"><upload-filled /></el-icon>
+          <div class="el-upload__text">
+            将文件拖到此处，或<em>点击上传</em>
+          </div>
+          <template #tip>
+            <div class="el-upload__tip">
+              支持 .xlsx / .xls / .csv 格式，单个文件不超过 10MB
+            </div>
+          </template>
+        </el-upload>
+        <el-alert
+          title="导入说明"
+          type="info"
+          :closable="false"
+          show-icon
+        >
+          <div class="import-desc">
+            <div>1. 请先下载模板，按照模板格式填写数据</div>
+            <div>2. 日期格式：YYYY-MM-DD，如 2024-01-15</div>
+            <div>3. 收支类型：收入 / 支出</div>
+            <div>4. 金额必须为数字</div>
+          </div>
+        </el-alert>
+      </div>
+      <template #footer>
+        <el-button @click="importDialogVisible = false">取消</el-button>
+      </template>
+    </el-dialog>
+
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="560px" @close="resetForm">
       <el-form ref="formRef" :model="form" :rules="rules" label-width="90px">
         <el-row :gutter="12">
@@ -128,8 +168,8 @@
           </el-col>
           <el-col :span="12">
             <el-form-item label="消费分类" prop="category">
-              <el-select v-model="form.category" placeholder="请选择分类" style="width: 100%" allow-create filterable>
-                <el-option v-for="item in categories" :key="item" :label="item" :value="item" />
+              <el-select v-model="form.category" placeholder="请选择分类" style="width: 100%" allow-create filterable clearable>
+                <el-option v-for="item in categories" :key="item.value" :label="item.label" :value="item.value" />
               </el-select>
             </el-form-item>
           </el-col>
@@ -161,7 +201,7 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Delete, Document, Download, Plus, Refresh, Search, Upload } from '@element-plus/icons-vue'
+import { Delete, Document, Download, Plus, Refresh, Search, Upload, UploadFilled } from '@element-plus/icons-vue'
 import {
   createAccounting,
   deleteAccounting,
@@ -172,6 +212,19 @@ import {
   importAccounting,
   updateAccounting
 } from '@/api/app/accounting'
+import { getDictDataByCode } from '@/api/system/dict'
+
+function getMonthDateRange() {
+  const now = new Date()
+  const firstDay = new Date(now.getFullYear(), now.getMonth(), 1)
+  const formatDate = (d) => {
+    const year = d.getFullYear()
+    const month = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+  }
+  return [formatDate(firstDay), formatDate(now)]
+}
 
 const loading = ref(false)
 const submitLoading = ref(false)
@@ -184,9 +237,14 @@ const progressText = ref('')
 const progressPercent = ref(0)
 let progressTimer = null
 
-const categories = ['餐饮', '交通', '购物', '娱乐', '住房', '医疗', '教育', '工资', '其他']
+const importDialogVisible = ref(false)
+const uploadRef = ref()
 
-const query = reactive({ item: '', category: '', dateRange: [], page: 1, size: 10 })
+const defaultCategories = ['餐饮', '交通', '购物', '娱乐', '住房', '医疗', '教育', '工资', '其他']
+const categories = ref([])
+
+const monthRange = getMonthDateRange()
+const query = reactive({ item: '', category: '', dateRange: [...monthRange], page: 1, size: 10 })
 
 const dialogVisible = ref(false)
 const dialogTitle = ref('')
@@ -205,8 +263,7 @@ const form = reactive({
 const rules = {
   date: [{ required: true, message: '请选择日期', trigger: 'change' }],
   item: [{ required: true, message: '请输入项目', trigger: 'blur' }],
-  amount: [{ required: true, message: '请输入金额', trigger: 'blur' }],
-  category: [{ required: true, message: '请选择分类', trigger: 'change' }]
+  amount: [{ required: true, message: '请输入金额', trigger: 'blur' }]
 }
 
 function normalizeRecord(row = {}) {
@@ -276,7 +333,7 @@ function handleSearch() {
 function handleReset() {
   query.item = ''
   query.category = ''
-  query.dateRange = []
+  query.dateRange = [...getMonthDateRange()]
   handleSearch()
 }
 
@@ -425,6 +482,7 @@ async function handleImport(file) {
     const errorCount = res.data?.errors?.length || 0
     const successCount = res.data?.success || 0
     finishProgress('导入完成')
+    importDialogVisible.value = false
     ElMessage.success(errorCount ? `导入完成：成功 ${successCount} 条，失败 ${errorCount} 条` : `导入成功 ${successCount} 条`)
   } catch (error) {
     closeProgress()
@@ -479,7 +537,31 @@ async function handleDownloadTemplate() {
   }
 }
 
-onMounted(loadData)
+async function loadCategories() {
+  try {
+    const res = await getDictDataByCode('accounting_category')
+    if (res.code === 0 || res.code === 200) {
+      const list = res.data || []
+      categories.value = list.map((item) => ({
+        label: item.item_label || item.itemLabel || item.label || '',
+        value: item.item_value || item.itemValue || item.value || ''
+      })).filter((item) => item.value)
+    } else {
+      categories.value = defaultCategories.map((item) => ({ label: item, value: item }))
+    }
+  } catch (error) {
+    categories.value = defaultCategories.map((item) => ({ label: item, value: item }))
+  }
+}
+
+function resetImport() {
+  uploadRef.value?.clearFiles?.()
+}
+
+onMounted(() => {
+  loadCategories()
+  loadData()
+})
 </script>
 
 <style scoped>
@@ -519,5 +601,26 @@ onMounted(loadData)
   font-size: 13px;
   color: #606266;
   margin-bottom: 12px;
+}
+
+.import-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.import-tip {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.import-upload {
+  width: 100%;
+}
+
+.import-desc {
+  font-size: 13px;
+  line-height: 1.8;
+  color: #606266;
 }
 </style>

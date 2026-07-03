@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
  * 备忘录实体类
@@ -14,6 +15,7 @@ public class AppNote {
     @TableId(type = IdType.AUTO)
     private Integer id;
 
+    @JsonProperty("user_id")
     private Integer userId;
 
     // 组织ID（数据库中可能不存在）
@@ -24,11 +26,17 @@ public class AppNote {
 
     private String content;
 
+    // 类型（数据字典）
+    @JsonProperty("note_type")
+    private String noteType;
+
     // tags 字段在数据库中是 TEXT，存储 JSON 字符串
     private String tags;
 
+    @JsonProperty("created_at")
     private String createdAt;
 
+    @JsonProperty("updated_at")
     private String updatedAt;
 
     public Integer getId() {
@@ -69,6 +77,14 @@ public class AppNote {
 
     public void setContent(String content) {
         this.content = content;
+    }
+
+    public String getNoteType() {
+        return noteType;
+    }
+
+    public void setNoteType(String noteType) {
+        this.noteType = noteType;
     }
 
     public String getTags() {

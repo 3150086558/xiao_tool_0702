@@ -177,8 +177,16 @@ public class AppTodoServiceImpl extends ServiceImpl<AppTodoMapper, AppTodo> impl
         }
 
         // 更新完成状态
-        existing.setCompleted(completed != null ? completed : 0);
+        int newStatus = completed != null ? completed : 0;
+        existing.setCompleted(newStatus);
         existing.setUpdatedAt(LocalDateTime.now().format(DATE_FORMATTER));
+
+        // 设置完成时间
+        if (newStatus == 1) {
+            existing.setCompletedAt(LocalDateTime.now().format(DATE_FORMATTER));
+        } else {
+            existing.setCompletedAt(null);
+        }
 
         this.updateById(existing);
         return existing;
